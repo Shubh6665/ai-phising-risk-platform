@@ -31,8 +31,15 @@ React UI (shows result to user)
 ### Modular Monolith
 All backend code runs in one single Python process. We use Python packages (directories with `__init__.py`) to enforce boundaries instead of microservices. This is the correct pattern for a single-developer AI project because it eliminates network latency between components, simplifies deployment, and makes testing much easier, while still teaching separation of concerns.
 
-### Dependency Injection
-In our configuration (`src/config.py`), we use `pydantic-settings`. This validates our `.env` file on startup. If a required API key is missing, the app crashes immediately on startup rather than failing unpredictably later.
+### Typed Configuration
+In our configuration (`src/config.py`), we use `pydantic-settings`. It reads environment variables and the local `.env` file and validates their types when `Settings()` is created, so a wrongly typed value fails immediately.
+
+The API keys (`GOOGLE_API_KEY`, `GROQ_API_KEY`) and `DATABASE_URL` are deliberately `Optional` with a default of `None`, so a missing key does **not** crash the app at startup. This lets us run tests and the ML phases without any LLM keys. The check that a key is present happens later, when the LLM client is actually initialized (Phase 8).
+
+(Dependency injection is a separate concept, planned for FastAPI in Phase 6.)
+
+### Python Version
+The project targets Python 3.11 to 3.13 and is developed on Python 3.12, with the virtual environment in `.venv/`. Phase 1 was initially built on the macOS system Python 3.9, which is end-of-life and too old for recent releases of libraries planned for later phases, so the environment was recreated on 3.12.
 
 ## Important Decisions
 

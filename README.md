@@ -4,11 +4,12 @@ A learning-first AI engineering project that combines classical ML, NLP, and age
 
 ## Setup
 
-This project uses Python 3.11+.
+This project supports Python 3.11 to 3.13 (`>=3.11,<3.14`) and is developed on Python 3.12.
 
 ```bash
-# 1. Activate the virtual environment
-source env/bin/activate
+# 1. Create and activate the virtual environment
+python3.12 -m venv .venv
+source .venv/bin/activate
 
 # 2. Install dependencies (editable mode)
 pip install -e ".[dev]"
@@ -26,4 +27,4 @@ pytest tests/ -v
 
 ## Architecture
 
-See [docs/architecture.md](docs/architecture.md) for full details.
+See [docs/learning/architecture.md](docs/learning/architecture.md) for full details.

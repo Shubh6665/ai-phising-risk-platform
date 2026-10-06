@@ -1,7 +1,8 @@
 # Python for ML (pandas) — Phase 2
 
 > Only things actually implemented and measured in this project are recorded here.
-> Updated so far: Phase 2, Step 2 (dataset loading + global exact deduplication).
+> Updated so far: Phase 2, Step 2 (dataset loading + global exact deduplication) and
+> Step 3 (deterministic text preprocessing).
 
 ## 1. The dataset on disk (measured)
 
@@ -101,12 +102,127 @@ Decisions:
    spam differing by a few characters) are not detected. As a hint only: the already-normalized
    `phishing_email.csv` contained 408 duplicate rows after its lowercasing/punctuation removal,
    which suggests near-duplicates exist in the data. This was measured on a different
-   representation than the one we use, so it is not proof; whether to address near-duplicates
-   (e.g. after cleaning in Step 3) is an open decision.
+   representation than the one we use, so it is not proof. Step 3 removes exact duplicates
+   after deterministic cleaning; near-duplicates differing in meaningful text remain.
 3. **Dataset labels** are "phishing/spam" vs legitimate (the 1 class mixes phishing, spam and
    Nigerian-fraud emails), so this is not a pure phishing-only task.
 
-## 6. Interview takeaways
+## 6. Step 3 — Text preprocessing (`src/data/preprocessor.py`)
+
+**Intuition.** Raw emails contain noise that has nothing to do with phishing (Windows line endings,
+invisible characters, HTML leftovers, garbled accents). Cleaning removes that noise so features
+and models see consistent text, while keeping the signal (case, `!`, URLs, `@`).
+
+**Why it is safe before the split.** Every function is a pure function of ONE string. It learns
+nothing from the dataset (no vocabulary, no averages), so it cannot leak information between
+train and test. Fitted steps (TF-IDF, scalers) are different and wait until after the split.
+
+### What we measured before writing any rule (82,486 emails)
+| Noise | Emails affected |
+|---|---|
+| `\r` line endings | 31,657 (mostly Enron 28,796 and Ling 2,616) |
+| 3+ blank lines | 34,139 (after counting subject+body together) |
+| runs of 2+ spaces | 30,636 |
+| non-breaking space `\xa0` | 2,630 |
+| control / zero-width chars | 537 |
+| HTML tags (known tag names) | a few hundred (~0.7%); no `<style>`/`<script>`/`<img>` at all |
+| mojibake-looking text (`Ã`, `â€`, `Â`) | 83 |
+| entities like `&amp;` | ~140 |
+
+HTML turned out to be rare. The real noise was whitespace and line endings, so the design is
+mostly whitespace normalization rather than a heavy HTML pipeline.
+
+### What it does, in order (`clean_text`)
+1. Remove invisible characters (control, zero-width).
+2. `repair_mojibake` — fix `â€¢` -> `•`, `Â£` -> `£`, one suspicious sequence at a time.
+3. `strip_html` — remove comments and a whitelist of real tag names; keep the target of
+   `<a href="...">` as text so link URLs are still visible to URL features.
+4. Decode entities that end with `;` (`&amp;`, `&#169;`).
+5. `normalize_whitespace` — `\r\n`->`\n`, unicode spaces -> space, collapse runs of spaces,
+   max one blank line, `strip()`. `clean_subject` additionally forces one line.
+
+`preprocess_emails` = clean every email, then `deduplicate_emails` again, because cleaning can
+make two different raw emails identical.
+
+### Decisions and why
+- **Whitelist of tag names, not `<[^>]*>`.** A generic pattern also removes `<http://...>`,
+  `<user@host>` and `<what>`; 774 emails contain `<email@host>`. The tag name must be followed by
+  whitespace, `/` or `>` so `<a@b.com>` is not mistaken for the `<a>` tag.
+- **Keep `href` targets.** Only 10 emails have a URL exclusively inside an `href`, but stripping
+  them would silently delete exactly what URL features need.
+- **Only decode entities ending in `;`.** `html.unescape` alone would turn the `&copy` inside
+  `page?a=1&copy=2` into a copyright sign and corrupt the URL.
+- **No quoted-printable decoding.** `=3D` appears in only 227 emails, and the soft-line-break
+  pattern `=\n` also matches decorative `=====` lines and Enron's `total supply = 5`, so decoding
+  would corrupt real text.
+- **Do not delete U+FFFD (�).** It marks information already lost; deleting it glues words together.
+- **No lowercasing, no punctuation stripping.** That is exactly the damage that made
+  `phishing_email.csv` unusable (section 2). Case and `!` are features.
+- **No `ftfy` dependency.** The mojibake problem touches 83 emails; a small, tested function is
+  enough and one fewer dependency to explain.
+
+### Debugging lesson: test on real data, not just unit tests
+All unit tests passed, yet running the cleaner on the real dataset and checking **idempotency**
+(`clean(clean(x)) == clean(x)`) exposed a bug in my first mojibake repair:
+
+- First version: encode the *whole* email as cp1252 and decode as UTF-8, all-or-nothing.
+- Real emails mix mojibake (`Â©`) with a *genuine* non-breaking space (`\xa0`). One legitimate
+  `\xa0` made the whole-text round trip fail, so nothing was repaired on pass 1. The `\xa0` was
+  then turned into a space, and pass 2 succeeded -> not idempotent.
+- My first guess (move invisible-character removal earlier) was wrong, which I confirmed by
+  inspecting the actual failing bytes instead of assuming. Root cause: the repair unit was too big.
+- Fix: repair each suspicious sequence on its own (a lead char `Ã..ô` followed by 1-3
+  continuation chars), and keep a sequence only if that small piece decodes as valid UTF-8.
+  Regression tests were added for the real failing pattern.
+
+Also, one of my own tests briefly contained `... or True` and a comparison of a call with itself;
+both would pass whatever the code did. Reviewing tests for assertions that cannot fail is part of
+testing.
+
+### Measured results of preprocessing (real data)
+- Rows: 82,486 -> **82,249** after cleaning + dedup (**237 removed**; before cleaning exact dedup
+  removed 0). Removed by source: CEAS_08 171, Nigerian_Fraud 24, Enron 22, Nazario 13,
+  SpamAssasin 7, Ling 0.
+- Duplicate groups after cleaning: 128, with **0 conflicting labels** (so dropping copies never
+  discards a disagreement).
+- Class balance after: **42,667 phishing / 39,582 legitimate** (phishing share 0.5188).
+- Signal preserved exactly: emails with uppercase 49,448 -> 49,448; with `!` 29,393 -> 29,393;
+  with `@` 30,734 -> 30,734; with `https?://` 32,087 -> 32,087.
+- Noise removed: `\r` 31,657 -> 0; `\xa0` 2,630 -> 0; control/zero-width 537 -> 0;
+  3+ newlines -> 0; 2+ spaces -> 0.
+- Mojibake-looking emails 83 -> 28. The remaining matches include legitimate text (Portuguese
+  `NÃO`) and malformed/unsupported sequences; these were left unchanged.
+- Empty bodies after cleaning: 5 (was 1); empty subjects: 347; no email has both empty.
+- Idempotency on the full dataset: all subjects and 82,485 of 82,486 bodies. The one exception is
+  a Nazario email containing `pdf&amp;amp;jpeg`: first pass yields `pdf&amp;jpeg`, second pass
+  yields `pdf&jpeg`. We intentionally decode **one layer per pass**, not recursively. Recursing
+  could change legitimate literal entity text or expose encoded markup (e.g. `&amp;lt;script&amp;gt;`
+  becomes a tag after multiple passes); suppressing all nested entities would preserve opaque
+  markup instead of cleaning it. The same `clean_text` function is used once per input in training
+  and will be used once for serving. Do not re-clean already-cleaned inputs; the one remaining
+  non-idempotent email is a documented limitation with a regression test.
+- Cleaning all emails takes about 7.7 seconds in this local run (not a performance guarantee).
+
+### Limitations discovered
+1. **URL presence is strongly source-correlated.** Emails containing `http(s)://`: CEAS_08 26,228,
+   SpamAssasin 4,572, Nigerian_Fraud 1,100, Nazario 194, **Enron 0, Ling 0**. A URL feature may
+   therefore partly measure *which source* an email came from. This adds to the source-shortcut
+   risk in section 5 and should be checked with per-source evaluation in Phase 3.
+2. **Near-duplicates remain.** Only exact duplicates of the cleaned text are removed.
+3. **Cleaning changes most emails** (79,417 of 82,486 differ from raw, mainly via whitespace and
+   line endings). That is expected, but it means the text a model sees is not the original
+   byte-for-byte text.
+4. **Mojibake repair is partial** by design; a wrong repair is considered worse than none.
+
+### Interview takeaways (preprocessing)
+- *"How do you avoid leakage in preprocessing?"* — Only stateless per-string rules run before the
+  split. Anything that learns from data (vocabulary, scaling) is fit on the training split only.
+- *"Why not just strip all `<...>`?"* — Emails contain `<user@host>` and `<http://...>`; I
+  measured 774 emails with `<email@host>`, so I only strip known HTML tag names.
+- *"How did you validate the cleaner?"* — Unit tests, then a before/after measurement on the real
+  data (signals preserved, noise removed) and an idempotency check, which found a real bug.
+
+## 7. Interview takeaways
 
 - *"Why did you not use the pre-combined CSV?"* — I measured it: it was lowercased with
   punctuation removed, which would have made URL and uppercase/exclamation features impossible.

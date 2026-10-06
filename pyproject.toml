@@ -25,12 +25,13 @@ dev = [
     "pytest-cov>=5.0",
 ]
 
-# Phase 2 additions (uncomment when starting Phase 2):
-# data = [
-#     "pandas>=2.0",
-#     "numpy>=1.26",
-#     "scikit-learn>=1.4",
-# ]
+# Phase 2: data handling and feature engineering
+# Install with: pip install -e ".[dev,data]"
+data = [
+    "pandas>=2.0",
+    "numpy>=1.26",
+    "scikit-learn>=1.4",
+]
 
 # Phase 4 additions (uncomment when starting Phase 4):
 # nlp = [

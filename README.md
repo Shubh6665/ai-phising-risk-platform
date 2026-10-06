@@ -12,7 +12,7 @@ python3.12 -m venv .venv
 source .venv/bin/activate
 
 # 2. Install dependencies (editable mode)
-pip install -e ".[dev]"
+pip install -e ".[dev,data]"
 
 # 3. Configure environment
 cp .env.example .env

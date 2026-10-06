@@ -130,3 +130,40 @@ upstream dataset processing.
 **Interview takeaway:** Why can these rules run without fitting? Every output depends only on one
 email and fixed code. A TF-IDF vocabulary, by contrast, depends on the frequency of words across
 emails, so fitting it on validation/test data would cause leakage.
+
+## Phase 2 completion checkpoint
+
+**Status: complete.** The existing ten features are sufficient for the planned Phase 2 scope:
+text statistics and fixed keyword signals, URL structure from the same email, and a combined
+numeric matrix with deterministic tests. No additional features were added for feature-count
+padding, and no model was trained or evaluated.
+
+Verified pipeline:
+
+```text
+Raw per-source CSVs
+→ deterministic cleaning
+→ exact deduplication
+→ stratified 70/15/15 split (seed 42)
+→ deterministic text + URL feature extraction
+→ numeric feature matrix
+```
+
+`load_raw_emails()` loads the six source files; `preprocess_emails()` cleans and globally
+exact-deduplicates; `split_emails()` partitions the result; `extract_features()` runs separately
+on each split. Subject and body are combined in `build_email_text()`. Source remains analysis
+metadata and neither source nor label enters the feature matrix. No train/holdout-dependent
+fitting occurs in Phase 2.
+
+Measured raw count: **82,486** (42,891 class 1 / 39,595 class 0). After cleaning and exact
+deduplication: **82,249** (42,667 class 1 / 39,582 class 0), removing **237** rows. Final splits:
+train **57,574**, validation **12,337**, test **12,338**, with zero exact combined-text overlap.
+The prior full-data feature verification covered all these rows and found no NaNs or infinities.
+The final full suite contains **51 passing tests**, including 14 feature tests. Raw CSVs remain
+ignored. `implementation_plan.md` is retained unchanged as the original planning document;
+these learning notes record the actual implementation decisions and measured results.
+
+Remaining limitations are documented, not blockers for this phase: source-formatting shortcuts,
+near-duplicates not caught by exact deduplication, regex URL coverage, mixed phishing/spam label
+semantics, and one-pass entity decoding (one real body changes if cleaned again). Predictive
+performance remains unmeasured. Phase 3 requires a separate explicit instruction.

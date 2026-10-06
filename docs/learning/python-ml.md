@@ -2,7 +2,7 @@
 
 > Only things actually implemented and measured in this project are recorded here.
 > Updated so far: Phase 2, Step 2 (dataset loading + global exact deduplication) and
-> Step 3 (deterministic text preprocessing).
+> Step 3 (deterministic text preprocessing) and Step 4 (stratified splitting).
 
 ## 1. The dataset on disk (measured)
 
@@ -222,7 +222,47 @@ testing.
 - *"How did you validate the cleaner?"* — Unit tests, then a before/after measurement on the real
   data (signals preserved, noise removed) and an idempotency check, which found a real bug.
 
-## 7. Interview takeaways
+## 7. Step 4 — Reproducible train/validation/test split (`src/data/splitter.py`)
+
+**Level 1 — intuition:** Training emails teach the model, validation emails help choose settings,
+and test emails are held back for a final unbiased check. If class 1 is ~52% overall, we want
+roughly the same share in each group; otherwise a change in class mix can obscure comparisons.
+
+**Level 2 — technical:** `train_test_split(..., stratify=emails["label"], random_state=42)`
+randomly partitions rows while keeping the binary-label ratio approximately constant. Two splits
+produce 70% training and 30% temporary, then divide temporary data 50/50 for validation and test
+(70/15/15 overall). Rounding gives validation one fewer row than test. The same seed and the same
+ordered input yield the same assignment. `source` is carried along as **metadata**, not used for
+stratification and not part of any model feature matrix.
+
+**Flow:** `load_raw_emails()` -> `preprocess_emails()` (clean and global exact dedup) ->
+`split_emails()` -> train / validation / test. The split function refuses duplicate combined texts
+or missing/invalid labels so this boundary is hard to bypass by accident. No vocabulary, scaler,
+or other transformer is fitted here; such fitting happens **only on training data in later phases**.
+
+Real-data results with default seed 42 (82,249 cleaned, deduplicated emails):
+
+| Split | Rows | Legitimate (0) | Phishing/spam (1) | Share of 1 |
+|---|---:|---:|---:|---:|
+| Train | 57,574 | 27,707 | 29,867 | 0.51876 |
+| Validation | 12,337 | 5,937 | 6,400 | 0.51876 |
+| Test | 12,338 | 5,938 | 6,400 | 0.51872 |
+
+The three sets have **zero exact combined-text overlap** and their union is all 82,249 rows.
+All four columns (`subject`, `body`, `label`, `source`) are carried into each split. Source counts
+on train / validation / test respectively: CEAS_08 27,252 / 5,885 / 5,846; Enron 20,833 /
+4,397 / 4,515; Ling 2,023 / 436 / 400; Nazario 1,100 / 220 / 232; Nigerian_Fraud 2,318 /
+529 / 461; SpamAssasin 4,048 / 870 / 884. We stratify by **label alone**. Source style may still
+act as a shortcut even when the `source` column is excluded as a model feature; per-source
+performance should be assessed in Phase 3. Near-duplicate templates are not prevented from
+spanning splits by this exact-overlap check.
+
+**Interview takeaway:** Why not fit preprocessing on all rows before splitting? Global exact
+cleaning/dedup only applies fixed, row-local rules; learning a TF-IDF vocabulary or feature mean
+from the validation/test emails would transfer information from holdout data into training and
+make model evaluation less trustworthy.
+
+## 8. Interview takeaways
 
 - *"Why did you not use the pre-combined CSV?"* — I measured it: it was lowercased with
   punctuation removed, which would have made URL and uppercase/exclamation features impossible.

@@ -3,6 +3,7 @@
 > Only things actually implemented and measured in this project are recorded here.
 > Updated so far: Phase 2, Step 2 (dataset loading + global exact deduplication) and
 > Step 3 (deterministic text preprocessing) and Step 4 (stratified splitting).
+> Phase 2 Step 5 feature notes and measured full-data verification are in `feature-engineering.md`.
 
 ## 1. The dataset on disk (measured)
 

@@ -1,12 +1,15 @@
-# Classical ML and evaluation — Phase 3 Steps 1–4
+# Classical ML and evaluation — Phase 3 complete
 
 ## Scope and supervised classification
 
-Implemented so far: **untuned Logistic Regression and Random Forest baselines**, compared on the
-same held-out validation set in Steps 1–2, then evaluated with **training-only five-fold CV** in
-Step 3, followed by a controlled **None-vs-balanced class-weight comparison** in Step 4.
-Both model implementations are unchanged. No ensemble, threshold tuning or final model selection
-has been implemented. No model artifact has been saved; no held-out test features have been extracted.
+Completed: **untuned Logistic Regression and Random Forest baselines** (Steps 1–2),
+**training-only five-fold CV** (Step 3), a controlled **None-vs-balanced class-weight comparison**
+(Step 4), and **explicit model selection, development refit, serialization and one final held-out
+test evaluation** (Step 5). The earlier sections record the experiment boundaries at that time.
+Both core model implementations and Phase 2 code are unchanged. No ensemble, threshold tuning,
+new hyperparameter search or Phase 4 work has been implemented. The selected unweighted RF is
+saved locally and ignored by git. The final test has now been evaluated once; it must not be used
+for further selection or tuning.
 
 Supervised learning uses labeled examples to learn a mapping from features to a target. Our
 binary target is `0 = legitimate`, `1 = phishing/spam`. The positive class mixes phishing, spam
@@ -601,4 +604,171 @@ Interview takeaways:
 5. Why not use the test set to choose weights? That would contaminate the independent final
    evaluation with a model-selection decision.
 
-Stop point: Phase 3 Step 4 only. No serialization, threshold tuning, ensemble or Phase 4 work.
+Historical Step 4 boundary: class-weight experiments finished before the separately approved
+selection/serialization step below. No configuration was changed in response to weighting results.
+
+## Step 5 — Explicit model selection and final serialization
+
+### Model selection: development evidence, not test evidence
+
+Model selection means choosing one of the four already measured configurations. We use
+**highest held-out validation F1**, with exact ties resolved by **recall → ROC-AUC → precision**,
+then ascending candidate name for a fully reproducible tie. Accuracy is reported, not ranked.
+This rule is declared before final test access; it is a transparent project policy, not a
+universal optimal security cost function. F1 balances false alarms and missed positives;
+recall and confusion counts explicitly inform our security interpretation.
+
+`src/evaluation/model_selection.py` selects from supplied measurements without fitting anything
+or knowing test results. `docs/classical_ml_development.json` transcribes existing Step 1–4
+measurements with provenance at commit `8d8db01`; no CV, baseline or weighting experiment was
+rerun. The JSON's CV summary uses the ten-decimal precision already recorded in Step 3.
+The four validation results and exact confusion matrices remain in Step 4 above.
+
+**Selected: `rf_unweighted` (Random Forest, `class_weight=None`).** Its validation F1
+**0.8640143486059025** is highest among the four candidates. Versus unweighted LR, RF has both
+higher recall and precision as well as higher F1/AUC. Versus weighted RF, its precision is
+slightly lower, but recall, F1 and AUC are higher: weighting saved 21 alarms while adding 22
+misses. Weighted LR sacrificed 408 detections for 281 fewer alarms. For the recall-sensitive
+objective, retain `class_weight=None`; do not choose solely on accuracy or assume weights help.
+
+Previously measured training-only CV supports this choice's stability; it does not choose a
+new configuration or guarantee generalization. Population SD is `ddof=0`, not a confidence
+interval. Weighted variants were not cross-validated.
+
+| Metric | Unweighted LR CV mean ± SD | Unweighted RF CV mean ± SD |
+|---|---:|---:|
+| Accuracy | 0.7187099079 ± 0.0031381334 | 0.8687601938 ± 0.0018449263 |
+| Precision | 0.7265830496 ± 0.0036320090 | 0.9072753762 ± 0.0026204631 |
+| Recall | 0.7339871627 ± 0.0045912485 | 0.8320554536 ± 0.0023652752 |
+| F1 | 0.7302560221 ± 0.0030774985 | 0.8680357341 ± 0.0018515066 |
+| ROC-AUC | 0.7841766771 ± 0.0013744862 | 0.9425990056 ± 0.0013890773 |
+
+### Frozen configuration and development refit
+
+The final estimator is a fresh instance from the unchanged RF factory:
+
+```text
+n_estimators=200, criterion="gini", max_depth=12,
+min_samples_leaf=5, min_samples_split=2, max_features="sqrt",
+bootstrap=True, class_weight=None, random_state=42, n_jobs=1
+```
+
+All remaining sklearn defaults are unchanged (`max_samples=None`, `max_leaf_nodes=None`,
+`min_weight_fraction_leaf=0.0`, `min_impurity_decrease=0.0`, `ccp_alpha=0.0`, `oob_score=False`,
+`warm_start=False`, `verbose=0`, `monotonic_cst=None`). No scaling is needed for RF and none was
+added. The original LR scaler/model pipeline remains unchanged.
+
+After selection, concatenate the original **57,574 training + 12,337 validation rows**, then
+extract the same deterministic features and fit once on **69,911 development rows**:
+**33,644 legitimate / 36,267 phishing-spam**. The split seed remains 42; global deterministic
+cleaning and exact deduplication still occur before splitting. No test rows enter fitting.
+
+This is intentional final refitting, not leakage: validation has finished its development role.
+However, **the saved model has now trained on validation rows**. Future work must not call its
+validation performance independent or use those predictions as leakage-free ensemble tuning
+inputs. This step does not redesign future evaluation; it records the boundary explicitly.
+
+### Serialization, feature contract and security
+
+Serialization stores learned estimator state rather than retraining on startup. `joblib` handles
+sklearn estimators and NumPy arrays; it was already installed via sklearn and is now declared
+as a direct dependency in the existing `data` extra because this project imports it directly.
+
+`src/models/registry.py` saves a `ClassicalModelArtifact` containing:
+- The complete fitted estimator; an LR artifact would include its entire fitted scaler pipeline.
+- The ten feature names in fixed order and class mapping `[0, 1]`.
+- Selected configuration, selection rule, development row count, split seed and evidence hash.
+- Artifact schema, feature contract, Python/sklearn/NumPy/pandas/joblib versions, and SHA-256
+  fingerprints of the unchanged cleaning/feature code.
+
+Predictable paths, both gitignored:
+- Model: **`model_artifacts/ml/classical_model.joblib`**.
+- Local measured run report: `model_artifacts/ml/classical_model_final_evaluation.json`.
+
+The artifact takes **numeric feature matrices**, not raw emails. Email inference must use the
+same Phase 2 cleaning and extraction code; deterministic preprocessing is maintained in `src/`,
+not copied into the pickle. The loader checks code fingerprints, sklearn version, fitted state,
+feature order and class mapping. The prediction wrapper rejects reordered/missing/extra columns,
+nonnumeric values and NaN/infinite values instead of silently guessing. Fingerprints are
+conservative: even a source-only formatting change requires explicit artifact compatibility
+review. Matching hashes/versions are not a substitute for reproducing the full environment.
+
+**Only load trusted local artifacts.** `joblib.load()` can execute arbitrary code during
+unpickling, before metadata validation. Checks do not make untrusted downloads safe. Sklearn
+serialization is not a portable cross-version serving format; keep the recorded environment.
+Measured environment: Python **3.12.15**, sklearn **1.9.1**, NumPy **2.5.3**, pandas **3.0.6**,
+joblib **1.6.0**.
+
+The real run verified exactly equal predictions **and probabilities** before/after loading on
+**128 development rows**, preserving all ten columns. Synthetic tests verify both RF and the
+full LR pipeline (including fitted scaler statistics), rejected schemas and no overwrite.
+Final artifact SHA-256:
+`0fe95d47acb45a4caab6d600d6266b27efb44746e61e61e6a8e738337e9ffcc0`.
+
+### ONE final held-out test evaluation
+
+Command executed once: `.venv/bin/python -m scripts.finalize_classical_ml`.
+The script reserves a local report before fitting and refuses to run if a final artifact/report
+already exists. A failed run's reserved report must be investigated, not deleted to casually
+repeat evaluation. The guard reduces accidental repeats; it is not a tamper-proof audit system.
+
+After frozen selection, development refit, save and development-only load-equivalence checks,
+the script first extracts test features. It calls `predict` and `predict_proba` once each on
+the same **12,338 held-out test rows** and calculates all final metrics in one evaluation:
+**5,938 legitimate / 6,400 phishing-spam**. No other model is tested. Synthetic tests of this
+workflow are not evaluations of the real held-out dataset.
+
+| Metric | Development validation (train-only RF) | Final test (development-refitted RF) |
+|---|---:|---:|
+| Accuracy | 0.864796952257437 | 0.8674015237477711 |
+| Precision | 0.9033412887828163 | 0.9067622950819673 |
+| Recall | 0.82796875 | 0.8296875 |
+| F1 | 0.8640143486059025 | 0.866514360313316 |
+| ROC-AUC | 0.9413235588260063 | 0.9416939494568879 |
+
+Final test confusion matrix, `[[TN, FP], [FN, TP]]`:
+
+```text
+[[5392,  546],
+ [1090, 5310]]
+```
+
+There are **546 false alarms** and **1,090 missed phishing/spam examples**. Recall still misses
+**17.03125%** of positives. Final test scores are close to development validation scores, but
+these are different partitions and differently fitted estimators; the small increases are not
+proof of a retraining improvement or statistical significance. CV is stability evidence from
+the original training subset, validation was selection evidence, test is the final held-out
+estimate. No test result changed model settings, weights, features or prediction thresholds.
+
+### Verification, limitations and interview takeaways
+
+Focused new tests cover evidence-driven selection (any of the four can win), tie rules, malformed
+measurements, the recorded winner, RF/LR round-trip behavior, fitted/schema/version checks, and
+synthetic workflow ordering: development-only fit, save/load before test access, exactly one
+metric evaluation and blocked rerun. **12 focused tests passed; the full suite passed all 83
+tests**. The artifact also loaded successfully in a fresh Python process; file size is
+**5,953,919 bytes**. All five new Python files have no editor errors or warnings. Raw CSVs and
+both artifact/report files are confirmed ignored; Phase 2 and both baseline factories are
+unchanged. No real test evaluation was repeated during these verification checks.
+
+Limitations remain: different source composition and source-format/style shortcuts despite
+excluding `source`; exact deduplication does not remove near-duplicate/template effects; mixed
+phishing/spam labels and old emails; random splits are not source-disjoint or temporal tests.
+A stable CV and similar held-out score under the same dataset distribution **do not demonstrate
+production-level generalization**. Probabilities are not calibrated; no operating-cost study,
+threshold optimization or live-security validation was performed. Never reuse this final test
+result to repeatedly select future variants; no additional evaluation design was implemented here.
+
+Interview takeaways:
+1. Selection vs fitting? Choose configuration on development evidence, then fit a fresh estimator
+   on development data; final test remains separate until those decisions are frozen.
+2. Why not choose highest accuracy? Precision/recall and misses/alarms matter; our explicit F1
+   policy and security tradeoff explain the choice rather than a generic accuracy claim.
+3. Why save more than a model name? Learned state, feature order, fitted transformations, class
+   mapping and version/code contracts must agree at inference time.
+4. What does exact save/load equivalence prove? Serialization preserved outputs on checked inputs;
+   it does not prove detection quality or universal compatibility.
+5. What does one test evaluation prove? One held-out estimate under this split/distribution, not
+   resilience to future attacks or freedom from source shortcuts.
+
+Stop point: Phase 3 classical ML complete. No Phase 4, NLP or ensemble/risk-score work.

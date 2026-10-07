@@ -1,0 +1,29 @@
+{
+  "provenance": "Previously measured experiments recorded in docs/learning/ml-evaluation.md at commit 8d8db01; no experiments rerun to create this record.",
+  "split_seed": 42,
+  "training_rows": 57574,
+  "validation_rows": 12337,
+  "validation_metrics": {
+    "lr_unweighted": {"accuracy": 0.7186512118018967, "precision": 0.7277250816358265, "recall": 0.73125, "f1": 0.729483282674772, "roc_auc": 0.7846716565605525},
+    "lr_balanced": {"accuracy": 0.7083569749533922, "precision": 0.7439916405433646, "recall": 0.6675, "f1": 0.7036732004612091, "roc_auc": 0.7831139464375948},
+    "rf_unweighted": {"accuracy": 0.864796952257437, "precision": 0.9033412887828163, "recall": 0.82796875, "f1": 0.8640143486059025, "roc_auc": 0.9413235588260063},
+    "rf_balanced": {"accuracy": 0.8647158952743779, "precision": 0.9062339000515198, "recall": 0.82453125, "f1": 0.863454143827211, "roc_auc": 0.9408997862977936}
+  },
+  "training_only_cv": {
+    "configuration": "StratifiedKFold(5, shuffle=True, random_state=42); unweighted models; population SD ddof=0; values rounded to 10 decimal places in the existing notes.",
+    "lr_unweighted": {
+      "accuracy": {"mean": 0.7187099079, "std": 0.0031381334},
+      "precision": {"mean": 0.7265830496, "std": 0.0036320090},
+      "recall": {"mean": 0.7339871627, "std": 0.0045912485},
+      "f1": {"mean": 0.7302560221, "std": 0.0030774985},
+      "roc_auc": {"mean": 0.7841766771, "std": 0.0013744862}
+    },
+    "rf_unweighted": {
+      "accuracy": {"mean": 0.8687601938, "std": 0.0018449263},
+      "precision": {"mean": 0.9072753762, "std": 0.0026204631},
+      "recall": {"mean": 0.8320554536, "std": 0.0023652752},
+      "f1": {"mean": 0.8680357341, "std": 0.0018515066},
+      "roc_auc": {"mean": 0.9425990056, "std": 0.0013890773}
+    }
+  }
+}

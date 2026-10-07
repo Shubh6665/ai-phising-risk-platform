@@ -206,4 +206,77 @@ Confusion matrix `[[TN, FP], [FN, TP]]`: **`[[5902, 35], [30, 6370]]`**.
 
 - **Truncation**: 24.77% of training documents are truncated, discarding potentially crucial semantic information at the end of long emails.
 - **Shortcut Risks**: The high validation scores (F1 ~0.995) must be viewed skeptically. Random splits can share source-specific stylistic shortcuts or near-duplicate templates. This result does not guarantee that the model has learned robust phishing semantics for live production use, and no temporal/source-disjoint evaluation was performed.
-- **Stop point**: Phase 4 Step 2 implementation only. No FastAPI, RAG, LangGraph, ensemble, or test evaluation has been run.
+- **Scope note**: These are Phase 4 transformer results. Phase 5 ensemble validation is documented separately below; FastAPI, RAG, LangGraph, and held-out test evaluation remain out of scope here.
+
+## Phase 5 — Ensemble and application risk score, validation-only
+
+Measured evidence: [`ensemble-step5-report.json`](ensemble-step5-report.json). This
+report is the immutable record for this run; the values below are transcribed from
+it, not recomputed. The Kaggle evaluation used a Tesla T4 with DistilBERT on
+`cuda:0`, the saved Random Forest artifact, and the pinned private model
+`shubhsingh0700/phishing-risk-distilbert` at revision
+`0fa035f65ea98c94a33f24778c210695636efddd`.
+
+### Scope and inference contract
+
+- Phase 2 validation partition only: **12,337 rows**, deterministic seed **42**.
+- `test_evaluated: false`; the held-out test split was not accessed.
+- Real per-row Random Forest and DistilBERT class-1 probabilities were used;
+  TF-IDF was not an ensemble input.
+- DistilBERT used `max_length=512`, right truncation, dynamic per-batch padding,
+  `shuffle=False`, and batch size **8**.
+- Probability alignment was verified: both arrays had 12,337 valid probabilities
+  in the shared deterministic validation-row order.
+
+### Exact aggregation and categories
+
+```text
+base_score = (ml_probability * 0.4 + nlp_probability * 0.4) * 100
+rule_bonus = active_rules * (0.2 * 100 / max_rules)
+risk_score = min(base_score + rule_bonus, 100)
+```
+
+The current deterministic rules are `has_suspicious_url` and `urgency_language`.
+With these two rules, each active rule contributes 10 points and both contribute
+the maximum 20-point rule bonus. Categories are deterministic: Low `<40`, Medium
+`>=40`, High `>=60`, Critical `>=80`.
+
+The resulting 0–100 value is an **application risk score**, not a calibrated
+probability. Its scale mixes model outputs and a rule bonus; no probability
+calibration was performed.
+
+### Measured validation results
+
+| Metric | Ensemble validation |
+|---|---:|
+| Accuracy | 0.9928669854908 |
+| Precision | 0.9900621118012423 |
+| Recall | 0.99625 |
+| F1 | 0.9931464174454828 |
+| ROC-AUC | 0.9984230777328617 |
+
+Confusion matrix `[[TN, FP], [FN, TP]]`: **`[[5873, 64], [24, 6376]]`**.
+
+| Risk category | Rows |
+|---|---:|
+| Low | 5,897 |
+| Medium | 1,020 |
+| High | 4,123 |
+| Critical | 1,297 |
+
+| Risk score statistic | Value |
+|---|---:|
+| Min | 0.21780749035699695 |
+| Mean | 43.38746897382866 |
+| Max | 97.67155129224194 |
+
+### Interpretation and limits
+
+An ensemble is not required to outperform DistilBERT on every metric. Its purpose
+is per-email probability-level fusion with explicit deterministic evidence, not
+averaging global model scores. The strong validation values do not prove
+real-world phishing generalization: random splits can retain source-specific
+formatting or near-duplicate/template shortcuts, labels are historical mixed
+phishing/spam/fraud data, and no source-disjoint or temporal validation was run.
+Also, 512-token right truncation can discard trailing email context, including
+URLs or signatures. The held-out test split remains reserved.

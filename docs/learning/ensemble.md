@@ -76,3 +76,67 @@ The plan calls its formula illustrative and says weights and thresholds should
 be determined after individual-model validation. This project retains the shown
 formula without calling it experimentally validated. No Phase 6 work starts
 from this correction.
+
+## Phase 5 measured validation result
+
+The real Kaggle run completed on the Phase 2 seed-42 validation partition only:
+**12,337 rows**, `test_evaluated=false`. The immutable measurement artifact is
+[`docs/ensemble-step5-report.json`](../ensemble-step5-report.json). It recorded
+Tesla T4 / `cuda:0` DistilBERT inference, the saved Random Forest artifact, the
+pinned private model revision, `max_length=512`, right truncation, dynamic
+padding, `shuffle=False`, and batch size 8. It also verified that the Random
+Forest and DistilBERT probability arrays both had 12,337 values in identical
+validation-row order and were all in `[0, 1]`.
+
+| Metric | Measured ensemble validation value |
+|---|---:|
+| Accuracy | 0.9928669854908 |
+| Precision | 0.9900621118012423 |
+| Recall | 0.99625 |
+| F1 | 0.9931464174454828 |
+| ROC-AUC | 0.9984230777328617 |
+
+Confusion matrix order is `[[TN, FP], [FN, TP]]`: `[[5873, 64], [24, 6376]]`.
+Risk categories were Low 5,897; Medium 1,020; High 4,123; Critical 1,297. Risk
+score minimum/mean/maximum were 0.21780749035699695, 43.38746897382866, and
+97.67155129224194. These are validation observations, not production claims.
+
+## Interview explanation: what is actually fused
+
+An ensemble must combine **per-row probabilities**, not the aggregate accuracy
+or F1 values of its component models. Accuracy and F1 each summarize an entire
+dataset after a thresholding decision; averaging them would neither create a
+prediction for one email nor have a valid probabilistic meaning. Here each email
+instead contributes its Random Forest and DistilBERT phishing probabilities:
+
+```text
+base_score = (ml_probability * 0.4 + nlp_probability * 0.4) * 100
+rule_bonus = active_rules * (0.2 * 100 / max_rules)
+risk_score = min(base_score + rule_bonus, 100)
+```
+
+The two current deterministic rules are `has_suspicious_url` and
+`urgency_language`; so each active rule contributes 10 points and both consume
+the full 20-point bonus. The mapping is Low `<40`, Medium `>=40`, High `>=60`,
+and Critical `>=80`. This makes the result explainable and stable, but the
+0–100 score is an application risk score—not a calibrated chance of phishing.
+
+## Alignment and leakage lesson
+
+The model arrays can be combined only when entry `i` from each model refers to
+the same email. The evaluator therefore reconstructs the deterministic Phase 2
+validation split, derives stable row IDs from its combined email text, keeps the
+transformer `DataLoader` at `shuffle=False`, and rejects unequal row order,
+length, non-finite values, or probabilities outside `[0,1]`. The test split is
+not read. This protects the aggregation from row-mismatch bugs; it does not
+remove the existing broader limitations of random-split source/template
+shortcuts or 512-token right truncation, which can discard late email content.
+
+## What the result does and does not show
+
+The ensemble need not beat DistilBERT on every metric to be useful: it gives a
+deterministic risk construction that exposes both learned and rule signals.
+Validation performance does not establish real-world phishing generalization.
+The historical mixed labels, possible near-duplicate templates, source style,
+lack of source-disjoint/temporal evaluation, and truncation limitation remain
+important interview caveats.

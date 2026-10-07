@@ -1,0 +1,131 @@
+{
+  "evaluation_scope": "Phase 2 validation split only; held-out test split not accessed",
+  "test_evaluated": false,
+  "validation_rows": 12337,
+  "split_seed": 42,
+  "probability_alignment": {
+    "verified": true,
+    "row_count": 12337,
+    "row_order": "shared validation order; transformer DataLoader shuffle=False"
+  },
+  "model_inputs": {
+    "classical": {
+      "kind": "saved Random Forest artifact",
+      "path": "/kaggle/input/models/shubhsingh0700/phishing-classical-rf/scikitlearn/default/1/classical_model.joblib"
+    },
+    "nlp": {
+      "repository": "shubhsingh0700/phishing-risk-distilbert",
+      "revision": "0fa035f65ea98c94a33f24778c210695636efddd"
+    },
+    "tfidf": "not an ensemble input under implementation_plan.md"
+  },
+  "inference": {
+    "max_length": 512,
+    "truncation_side": "right",
+    "padding": "dynamic per batch",
+    "shuffle": false,
+    "batch_size": 8
+  },
+  "ensemble_formula": "(ml_probability * 0.4 + nlp_probability * 0.4) * 100 + rule_bonus; capped at 100",
+  "thresholds": {
+    "Low": "< 40",
+    "Medium": ">= 40",
+    "High": ">= 60",
+    "Critical": ">= 80"
+  },
+  "ensemble_metrics": {
+    "confusion_matrix": [
+      [
+        5873,
+        64
+      ],
+      [
+        24,
+        6376
+      ]
+    ],
+    "accuracy": 0.9928669854908,
+    "precision": 0.9900621118012423,
+    "recall": 0.99625,
+    "f1": 0.9931464174454828,
+    "roc_auc": 0.9984230777328617
+  },
+  "risk_category_distribution": {
+    "Low": 5897,
+    "Medium": 1020,
+    "High": 4123,
+    "Critical": 1297
+  },
+  "risk_score_stats": {
+    "min": 0.21780749035699695,
+    "max": 97.67155129224194,
+    "mean": 43.38746897382866
+  },
+  "sample_cases": [
+    {
+      "validation_row_index": 0,
+      "row_id_sha256": "cd71f344b0e33f2c3adfdd0be0e8fb3e917adcde2864a95fa7a35e17ccf0b40c",
+      "random_forest_probability": 0.173712,
+      "distilbert_probability": 0.99999,
+      "rule_signals": {
+        "has_suspicious_url": false,
+        "urgency_language": false
+      },
+      "rule_bonus": 0.0,
+      "risk_score": 46.95,
+      "category": "Medium"
+    },
+    {
+      "validation_row_index": 3084,
+      "row_id_sha256": "46f176c17701e91a0eda3be598580411ebc6f29d8b33eac7c05697055182b202",
+      "random_forest_probability": 0.315921,
+      "distilbert_probability": 8e-06,
+      "rule_signals": {
+        "has_suspicious_url": false,
+        "urgency_language": false
+      },
+      "rule_bonus": 0.0,
+      "risk_score": 12.64,
+      "category": "Low"
+    },
+    {
+      "validation_row_index": 6168,
+      "row_id_sha256": "3fe6b4f63ae155abdbaa77af118258ec43adb722b1fc4afde195d79119ee6509",
+      "random_forest_probability": 0.965237,
+      "distilbert_probability": 0.999986,
+      "rule_signals": {
+        "has_suspicious_url": false,
+        "urgency_language": true
+      },
+      "rule_bonus": 10.0,
+      "risk_score": 88.61,
+      "category": "Critical"
+    },
+    {
+      "validation_row_index": 9252,
+      "row_id_sha256": "2fcd31bf229d9d747757627fc1b34bc932971c55888d980b6a729ce1cfb87eac",
+      "random_forest_probability": 0.338653,
+      "distilbert_probability": 0.99999,
+      "rule_signals": {
+        "has_suspicious_url": false,
+        "urgency_language": false
+      },
+      "rule_bonus": 0.0,
+      "risk_score": 53.55,
+      "category": "Medium"
+    },
+    {
+      "validation_row_index": 12336,
+      "row_id_sha256": "bacfcd70460a5ba9b013772f121b0154e7d3a52f925a3989a83e87382321203a",
+      "random_forest_probability": 0.257693,
+      "distilbert_probability": 9e-06,
+      "rule_signals": {
+        "has_suspicious_url": false,
+        "urgency_language": false
+      },
+      "rule_bonus": 0.0,
+      "risk_score": 10.31,
+      "category": "Low"
+    }
+  ]
+}

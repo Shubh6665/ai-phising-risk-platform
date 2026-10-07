@@ -134,8 +134,10 @@ def test_notebook_is_unexecuted_valid_python_and_has_explicit_review_gates():
     for cell in notebook["cells"]:
         if cell["cell_type"] == "code":
             assert cell["outputs"] == [] and cell["execution_count"] is None
-            ast.parse(cell["source"])
-            code.append(cell["source"])
+            # Jupyter spec allows source as str OR list[str]; normalise before parsing.
+            cell_src = "".join(cell["source"]) if isinstance(cell["source"], list) else cell["source"]
+            ast.parse(cell_src)
+            code.append(cell_src)
     source = "\n".join(code)
     assert "development['test']" not in source and "data.test_text" not in source
     assert "APPROVE_TRUNCATION_AND_TRAINING = False" in source

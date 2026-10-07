@@ -1,12 +1,12 @@
-# Classical ML and evaluation — Phase 3 Steps 1–3
+# Classical ML and evaluation — Phase 3 Steps 1–4
 
 ## Scope and supervised classification
 
 Implemented so far: **untuned Logistic Regression and Random Forest baselines**, compared on the
 same held-out validation set in Steps 1–2, then evaluated with **training-only five-fold CV** in
-Step 3. Both model implementations are unchanged. No ensemble, class-weight comparison, threshold
-tuning or final model selection has been implemented. No model artifact has been saved; no
-held-out test features have been extracted.
+Step 3, followed by a controlled **None-vs-balanced class-weight comparison** in Step 4.
+Both model implementations are unchanged. No ensemble, threshold tuning or final model selection
+has been implemented. No model artifact has been saved; no held-out test features have been extracted.
 
 Supervised learning uses labeled examples to learn a mapping from features to a target. Our
 binary target is `0 = legitimate`, `1 = phishing/spam`. The positive class mixes phishing, spam
@@ -460,5 +460,145 @@ Interview questions:
    boundary. CV here measures only the original training split.
 5. Did CV improve the models? No configuration changed; it measured performance/stability.
 
-Stop point: Phase 3 Step 3 only. No class-weight experiments, threshold tuning, serialization,
-model selection or ensemble work has started.
+Historical Step 3 boundary: CV measured the unchanged baselines; class weighting was deferred
+until the separately approved Step 4 below.
+
+## Step 4 — Class imbalance and controlled class-weight experiment
+
+### Concept and hypothesis
+
+Class imbalance means one target class has more examples than the other. Our training split is
+close to balanced: **27,707 legitimate** and **29,867 phishing/spam** out of **57,574** rows.
+Phishing/spam is slightly the majority, not the minority. Therefore we measured weighting rather
+than assuming it would improve phishing recall.
+
+- `class_weight=None`: each training example has equal class-based weight.
+- `class_weight="balanced"`: sklearn calculates `N / (K × n_class)` from training labels,
+  where `N` is the training row count, `K` the number of classes, and `n_class` that class's count.
+  Each class consequently has equal total weight before RF bootstrap sampling.
+- Weighting changes the training objective, not the rows, labels or split. In LR it weights the
+  classification loss; in RF it weights impurity calculations and leaf class statistics.
+- When positives are the minority, upweighting them can increase recall at the cost of precision,
+  but this is not guaranteed. Here positives are downweighted: measured recall **decreased**.
+
+Actual training-derived weights:
+
+| Class | Count | Balanced weight |
+|---|---:|---:|
+| 0 — legitimate | 27,707 | 1.0389793193055907 |
+| 1 — phishing/spam | 29,867 | 0.9638396892891821 |
+
+### Exact controlled configurations and data boundaries
+
+Run: `.venv/bin/python -m scripts.compare_class_weights`, Python **3.12.15**, sklearn **1.9.1**.
+All four variants use the same Phase 2 seed-42 training and held-out validation partitions,
+unchanged ten features and default `predict()` decision rule. Validation has **12,337** rows:
+**5,937 legitimate / 6,400 phishing-spam**. Neither `source` nor `label` is a feature.
+
+| Variant | Configuration |
+|---|---|
+| `lr_unweighted` | Independent StandardScaler → LR; `class_weight=None` |
+| `lr_balanced` | Independent StandardScaler → LR; `class_weight="balanced"` |
+| `rf_unweighted` | Existing RF configuration; `class_weight=None` |
+| `rf_balanced` | Same RF configuration; `class_weight="balanced"` |
+
+Both LR variants retain `C=1.0`, effective L2 regularization (`l1_ratio=0.0` in sklearn 1.9.1),
+`solver="lbfgs"`, `max_iter=1000`, `tol=1e-4`, `fit_intercept=True`, `random_state=42` and all
+other defaults. Each variant fits its own scaler **on training only**; class weights are not
+passed to the scaler. RF retains `n_estimators=200`, `criterion="gini"`, `max_depth=12`,
+`min_samples_leaf=5`, `min_samples_split=2`, `max_features="sqrt"`, `bootstrap=True`,
+`random_state=42`, `n_jobs=1` and all other defaults. Only class weight changes within each pair.
+
+`create_class_weight_variants()` clones the existing estimators for explicit balanced variants;
+it does not change either factory. `run_class_weight_experiment()` accepts only supplied
+training/validation matrices, fits on training, and returns configurations, metrics and deltas,
+not fitted models. It rejects unexpected feature columns/order and mismatched row counts.
+Convergence warnings raise instead of silently accepting an unconverged LR run.
+
+The script runs the existing load/clean/deduplicate/split flow once, then extracts **train and
+validation features only**. Creating the reserved test partition is not using it for fitting
+or evaluation. No test feature extraction, test predictions, CV rerun, threshold tuning,
+hyperparameter tuning or artifact serialization occurred. The final test boundary remains
+untouched so it can provide an independent final evaluation after later approved decisions.
+
+### Actual validation results
+
+Both unweighted variants reproduced the previously recorded baseline metrics exactly.
+The table rounds measured values to nine decimal places; all confusion counts are exact.
+Positive class is phishing/spam, not exclusively phishing.
+
+| Variant | Accuracy | Precision | Recall | F1 | ROC-AUC |
+|---|---:|---:|---:|---:|---:|
+| LR None | 0.718651212 | 0.727725082 | 0.731250000 | 0.729483283 | 0.784671657 |
+| LR balanced | 0.708356975 | 0.743991641 | 0.667500000 | 0.703673200 | 0.783113946 |
+| RF None | 0.864796952 | 0.903341289 | 0.827968750 | 0.864014349 | 0.941323559 |
+| RF balanced | 0.864715895 | 0.906233900 | 0.824531250 | 0.863454144 | 0.940899786 |
+
+Confusion matrix order is `[[TN, FP], [FN, TP]]`:
+
+| Variant | Confusion matrix | False alarms (FP) | Missed positives (FN) |
+|---|---|---:|---:|
+| LR None | `[[4186, 1751], [1720, 4680]]` | 1,751 | 1,720 |
+| LR balanced | `[[4467, 1470], [2128, 4272]]` | 1,470 | 2,128 |
+| RF None | `[[5370, 567], [1101, 5299]]` | 567 | 1,101 |
+| RF balanced | `[[5391, 546], [1123, 5277]]` | 546 | 1,123 |
+
+Measured deltas, **balanced minus unweighted**, on the 0–1 metric scale:
+
+| Metric | LR delta | RF delta |
+|---|---:|---:|
+| Accuracy | -0.010294237 | -0.000081057 |
+| Precision | +0.016266559 | +0.002892611 |
+| Recall | -0.063750000 | -0.003437500 |
+| F1 | -0.025810082 | -0.000560205 |
+| ROC-AUC | -0.001557710 | -0.000423773 |
+
+### Security interpretation and decision
+
+Recall measures how many actual positives we catch; false negatives are missed phishing/spam.
+Precision measures how many positive alarms are correct; false positives cause unnecessary
+quarantines/reviews. Neither alone is sufficient, and accuracy does not resolve their costs.
+
+- **LR balanced** removes **281 false alarms** but adds **408 missed positives**. Recall drops
+  **6.375 percentage points**, while precision rises about **1.627 percentage points**. F1 and
+  ROC-AUC also decline. This is not an attractive tradeoff for the stated recall-sensitive goal.
+- **RF balanced** removes **21 false alarms** but adds **22 missed positives**. Recall drops
+  **0.34375 percentage points**, precision rises about **0.28926 percentage points**, and F1/
+  ROC-AUC decline slightly. The change is small; there is no demonstrated benefit for our goal.
+
+**Recommendation: retain `class_weight=None` for both model families.** Unweighted RF remains
+our stronger validation candidate, not a final selected/saved/deployed model. No core setting
+was changed by this experiment. A different operational cost policy might value fewer alarms,
+but no explicit cost model was measured here, so we do not claim universal optimality.
+
+### Verification, limitations and interview takeaways
+
+Focused experiment tests: **4 passed**. Full suite: **71 passed**. Tests verify that only class
+weight differs, factories remain unchanged, LR scalers and RF estimators fit training rows only,
+returned metrics/deltas and weights are correct, input matrices are not mutated, metadata is
+rejected, and the script cannot access the test partition. Editor diagnostics for the three
+new Python files show no errors or warnings. Narrow casts for sklearn `clone()` resolve broad
+inferred return types without changing runtime behavior or estimator settings.
+
+Limitations:
+- One controlled comparison on the existing validation split, not an independent final test.
+- Small RF differences are not evidence of statistical significance; no significance test ran.
+- Excluding `source` does not eliminate source-format/style shortcuts in random splits.
+- Exact deduplication does not remove near-duplicates; mixed phishing/spam labels and older
+  email data limit generalization to current, purely phishing attacks.
+- Model probabilities are not demonstrated calibrated risk probabilities.
+- These results support keeping current weights for this dataset/configuration, not claiming
+  that balancing never helps. No weighting variants were cross-validated in this step.
+
+Interview takeaways:
+1. Why test weighting on nearly balanced data? To measure the precision/recall tradeoff rather
+   than assuming a conventional technique improves performance.
+2. Why did recall fall? Positives were the majority and were downweighted; this is consistent
+   with the result, not proof that weights always move recall in a fixed direction.
+3. What made the experiment controlled? Identical splits, features, model settings and default
+   prediction rules; only class weight differed. Training labels determined the weights.
+4. Does weighting resample data? No. It changes example influence during fitting.
+5. Why not use the test set to choose weights? That would contaminate the independent final
+   evaluation with a model-selection decision.
+
+Stop point: Phase 3 Step 4 only. No serialization, threshold tuning, ensemble or Phase 4 work.

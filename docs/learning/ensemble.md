@@ -21,6 +21,18 @@ separate private Inputs. Run `scripts/evaluate_ensemble.py` with
 The evaluator may obtain `HF_TOKEN` from Kaggle Secrets. It never substitutes
 predictions, never accesses `splits.test`, and refuses to overwrite a report.
 
+## GPU inference placement
+
+`model.eval()` changes dropout/batch-normalization behavior, but it does not
+move model weights to a GPU. The Phase 5 evaluator explicitly selects
+`torch.device("cuda" if torch.cuda.is_available() else "cpu")`, calls
+`model.to(device)`, and moves each tokenized batch to that same device before
+calling the model. On a Kaggle GPU session it prints CUDA availability, the
+selected device, actual model-parameter device, and GPU name, then fails if
+the model is not on CUDA. Batch size defaults to 8 and is configurable via
+`--inference-batch-size`; dynamic padding limits each batch to its longest
+email rather than always allocating 512 tokens.
+
 ## Why Ensemble Models Are Useful
 In earlier phases, we trained classical ML models (Random Forest) that leverage explicit linguistic and structural features, as well as an NLP transformer (DistilBERT) that captures deep contextual relationships in the raw text. Ensembles are powerful because they combine multiple diverse models to produce a result that is typically more robust and accurate than any single constituent model. By bringing together the orthogonal signals (structured metadata vs. unstructured context), the ensemble mitigates individual model blindspots.
 

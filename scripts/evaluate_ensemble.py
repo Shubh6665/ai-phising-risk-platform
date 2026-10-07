@@ -33,6 +33,7 @@ HF_REVISION = "0fa035f65ea98c94a33f24778c210695636efddd"
 HF_TOKEN_ENVIRONMENT_VARIABLE = "HF_TOKEN"
 VALIDATION_ROW_COUNT = 12_337
 MAX_LENGTH = 512
+DEFAULT_INFERENCE_BATCH_SIZE = 8
 
 
 class IndexedTextDataset(Dataset[tuple[int, str]]):
@@ -96,8 +97,31 @@ def verify_probability_alignment(
             raise ValueError(f"{name} probabilities must be finite values in [0, 1]")
 
 
-def predict_distilbert_probabilities(texts: Sequence[str], token: str) -> tuple[list[str], list[float]]:
-    """Use dynamic padding, right truncation, max_length=512, and input order."""
+def select_inference_device() -> torch.device:
+    """Prefer the Kaggle GPU, while retaining an explicit CPU fallback for non-GPU hosts."""
+    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+def verify_model_device(model: Any, device: torch.device) -> None:
+    """Print safe placement evidence and reject a CPU model on an available CUDA host."""
+    model_device = next(model.parameters()).device
+    cuda_available = torch.cuda.is_available()
+    gpu_name = torch.cuda.get_device_name(device) if cuda_available else None
+    print(json.dumps({
+        "cuda_available": cuda_available,
+        "selected_device": str(device),
+        "model_device": str(model_device),
+        "gpu_name": gpu_name,
+    }), flush=True)
+    if cuda_available and model_device.type != "cuda":
+        raise RuntimeError("CUDA is available but the DistilBERT model is not on CUDA")
+
+
+def predict_distilbert_probabilities(
+    texts: Sequence[str], token: str, batch_size: int
+) -> tuple[list[str], list[float]]:
+    """Use CUDA when available, dynamic padding, and deterministic batched inference."""
+    device = select_inference_device()
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         HF_REPOSITORY, revision=HF_REVISION, token=token
     )
@@ -105,17 +129,22 @@ def predict_distilbert_probabilities(texts: Sequence[str], token: str) -> tuple[
     model = transformers.AutoModelForSequenceClassification.from_pretrained(
         HF_REPOSITORY, revision=HF_REVISION, token=token
     )
+    model.to(device)
     model.eval()
+    verify_model_device(model, device)
     row_ids = validation_row_ids(texts)
     predicted_row_ids: list[str] = []
     probabilities: list[float] = []
-    for indices, batch in DataLoader(IndexedTextDataset(texts), batch_size=64, shuffle=False):
-        with torch.no_grad():
+    for indices, batch in DataLoader(IndexedTextDataset(texts), batch_size=batch_size, shuffle=False):
+        with torch.inference_mode():
             inputs = tokenizer(
                 list(batch), padding=True, truncation=True, max_length=MAX_LENGTH,
                 return_tensors="pt",
             )
-            probabilities.extend(torch.softmax(model(**inputs).logits, dim=1)[:, 1].tolist())
+            inputs = {name: value.to(device) for name, value in inputs.items()}
+            probabilities.extend(
+                torch.softmax(model(**inputs).logits, dim=1)[:, 1].cpu().tolist()
+            )
         predicted_row_ids.extend(row_ids[int(index)] for index in indices.tolist())
     return predicted_row_ids, probabilities
 
@@ -145,7 +174,15 @@ def parse_arguments() -> Namespace:
         default=Path(os.environ.get("PHASE5_REPORT_PATH", "docs/ensemble-step5-report.json")),
         help="New report location; an existing report is never overwritten.",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--inference-batch-size", type=int,
+        default=int(os.environ.get("PHASE5_INFERENCE_BATCH_SIZE", DEFAULT_INFERENCE_BATCH_SIZE)),
+        help="DistilBERT batch size; defaults to 8 to keep T4 memory usage conservative.",
+    )
+    arguments = parser.parse_args()
+    if arguments.inference_batch_size < 1:
+        raise ValueError("--inference-batch-size must be at least 1")
+    return arguments
 
 
 def main() -> None:
@@ -161,7 +198,9 @@ def main() -> None:
 
     random_forest = load_model(arguments.classical_model_path)
     ml_probabilities = random_forest.predict_proba(extract_features(validation))[:, 1].tolist()
-    nlp_row_ids, nlp_probabilities = predict_distilbert_probabilities(texts, token)
+    nlp_row_ids, nlp_probabilities = predict_distilbert_probabilities(
+        texts, token, arguments.inference_batch_size
+    )
     verify_probability_alignment(row_ids, row_ids, nlp_row_ids, ml_probabilities, nlp_probabilities)
 
     risk_scores: list[float] = []
@@ -204,6 +243,13 @@ def main() -> None:
             "classical": {"kind": "saved Random Forest artifact", "path": str(arguments.classical_model_path)},
             "nlp": {"repository": HF_REPOSITORY, "revision": HF_REVISION},
             "tfidf": "not an ensemble input under implementation_plan.md",
+        },
+        "inference": {
+            "max_length": MAX_LENGTH,
+            "truncation_side": "right",
+            "padding": "dynamic per batch",
+            "shuffle": False,
+            "batch_size": arguments.inference_batch_size,
         },
         "ensemble_formula": "(ml_probability * 0.4 + nlp_probability * 0.4) * 100 + rule_bonus; capped at 100",
         "thresholds": {"Low": "< 40", "Medium": ">= 40", "High": ">= 60", "Critical": ">= 80"},

@@ -78,3 +78,15 @@ def test_phase5_evaluator_rejects_different_model_row_order():
         evaluator.verify_probability_alignment(
             row_ids, row_ids, reversed_ids, probabilities, probabilities
         )
+
+
+def test_phase5_evaluator_selects_cuda_when_available(monkeypatch):
+    evaluator = _load_evaluator_module()
+    monkeypatch.setattr(evaluator.torch.cuda, "is_available", lambda: True)
+    assert evaluator.select_inference_device().type == "cuda"
+
+
+def test_phase5_evaluator_selects_cpu_without_cuda(monkeypatch):
+    evaluator = _load_evaluator_module()
+    monkeypatch.setattr(evaluator.torch.cuda, "is_available", lambda: False)
+    assert evaluator.select_inference_device().type == "cpu"

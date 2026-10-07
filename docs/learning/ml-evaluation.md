@@ -1,11 +1,12 @@
-# Classical ML and evaluation — Phase 3 Steps 1–2
+# Classical ML and evaluation — Phase 3 Steps 1–3
 
 ## Scope and supervised classification
 
 Implemented so far: **untuned Logistic Regression and Random Forest baselines**, compared on the
-same validation set. Step 1's LR implementation is unchanged. No ensemble, cross-validation,
-class-weight comparison, threshold tuning or final model selection has been implemented. No
-model artifact has been saved; no held-out test features have been extracted.
+same held-out validation set in Steps 1–2, then evaluated with **training-only five-fold CV** in
+Step 3. Both model implementations are unchanged. No ensemble, class-weight comparison, threshold
+tuning or final model selection has been implemented. No model artifact has been saved; no
+held-out test features have been extracted.
 
 Supervised learning uses labeled examples to learn a mapping from features to a target. Our
 binary target is `0 = legitimate`, `1 = phishing/spam`. The positive class mixes phishing, spam
@@ -330,5 +331,134 @@ Interview questions:
 6. What does importance prove? Only contribution to this forest's training impurity reduction, not
    causality, direction or generalization.
 
-Stop point: Phase 3 Step 2 only. Cross-validation, class-weight experiments, threshold tuning,
-serialization and ensemble work require separate approval.
+Step 2 stopped at the baseline comparison. The separately approved training-only CV experiment
+is recorded below; class-weight experiments, threshold tuning, serialization and ensemble work
+remain unimplemented.
+
+## Step 3 — Cross-validation: intuition and methodology
+
+**Level 1:** Instead of trusting a single split, divide the existing training set into five groups.
+Train a fresh model on four groups and evaluate on the fifth. Repeat so each group is evaluated
+once. We get five measurements of each model's sensitivity to the data partition.
+
+**Level 2:** StratifiedKFold preserves the class ratio approximately in each fold. Every training
+row participates in fold-validation exactly once and in four fold-training sets. Each iteration
+clones the estimator and fits it from scratch. Passing the whole LR Pipeline (not an already
+scaled matrix) ensures its StandardScaler learns means/variances only from that fold's training
+rows. Predictions transform fold-validation with that same fold-fitted scaler. RF needs no scaler.
+
+This is **not** another name for the project's held-out validation/test sets. CV operates only
+inside the original 57,574-row training split. The held-out validation set used in Steps 1–2
+and the final test set are not extracted, fitted or scored in this CV experiment. The existing
+Phase 2 split function still creates those partitions; the CV entry point accesses only `.train`.
+The sklearn result keys named `test_accuracy`, etc. denote *fold-validation scores*, not our
+held-out test set.
+
+Five folds balance computation (five fresh fits per model) with repeated measurements. We did
+not change models or hyperparameters based on scores. CV is intended to measure stability, not
+produce a higher score. CV models train on fewer rows than the full-training baselines, so CV
+means and prior held-out validation metrics are not measurements on identical conditions.
+
+### Exact configuration and implementation
+
+- Existing cleaned/deduplicated split with seed 42; CV input is **only** 57,574 training rows:
+  27,707 legitimate and 29,867 phishing/spam. The same ten deterministic numerical features are
+  used, excluding `source` and `label` from the matrix.
+- `StratifiedKFold(n_splits=5, shuffle=True, random_state=42)`, identical fold membership for LR/RF.
+- Folds 1–4: **46,059 fold-training / 11,515 fold-validation rows**; fold 5:
+  **46,060 / 11,514**. Every score below is fold-validation, not training performance.
+- Models are the unchanged `create_baseline()` and `create_classifier()` configurations from
+  Steps 1–2. Class weights remain None; thresholds remain default. No search or tuning occurred.
+- `cross_validate(..., n_jobs=1, error_score="raise", return_train_score=False)`; no fitted
+  estimators or artifacts are returned/saved. ConvergenceWarning also raises instead of being hidden.
+- Accuracy, precision, recall and F1 use hard labels; positive class is 1; undefined
+  precision/recall/F1 use zero. ROC-AUC scorer explicitly uses `predict_proba`.
+- Mean is the unweighted mean of the five fold scores. Standard deviation uses **ddof=0**
+  (population SD of these observed scores). Neither is a pooled out-of-fold metric or confidence interval.
+
+Reusable logic: `src/evaluation/cross_validation.py` contains `evaluate_cross_validation()`;
+`tests/test_evaluation/test_cross_validation.py` tests it on small in-memory examples.
+`scripts/cross_validate_ml.py` only orchestrates loading/cleaning/splitting and train-only extraction:
+
+```bash
+.venv/bin/python -m scripts.cross_validate_ml
+```
+
+### Actual LR per-fold results (scikit-learn 1.9.1)
+
+| Fold | Accuracy | Precision | Recall | F1 | ROC-AUC |
+|---|---:|---:|---:|---:|---:|
+| 1 | 0.7203647416 | 0.7301136364 | 0.7313357884 | 0.7307242014 | 0.7841482615 |
+| 2 | 0.7197568389 | 0.7244647818 | 0.7420488785 | 0.7331514099 | 0.7838127222 |
+| 3 | 0.7139383413 | 0.7220288414 | 0.7292817680 | 0.7256371814 | 0.7823740001 |
+| 4 | 0.7165436387 | 0.7247386760 | 0.7312908086 | 0.7280000000 | 0.7839225299 |
+| 5 | 0.7229459788 | 0.7315693127 | 0.7359785702 | 0.7337673176 | 0.7866258719 |
+
+### Actual RF per-fold results
+
+| Fold | Accuracy | Precision | Recall | F1 | ROC-AUC |
+|---|---:|---:|---:|---:|---:|
+| 1 | 0.8723404255 | 0.9109489051 | 0.8356210244 | 0.8716605553 | 0.9449196684 |
+| 2 | 0.8683456361 | 0.9098933431 | 0.8282557750 | 0.8671573782 | 0.9420885348 |
+| 3 | 0.8670429874 | 0.9045537341 | 0.8314080027 | 0.8664398500 | 0.9430940677 |
+| 4 | 0.8679114199 | 0.9051692756 | 0.8325799431 | 0.8673585070 | 0.9407049484 |
+| 5 | 0.8681605003 | 0.9058116232 | 0.8324125230 | 0.8675623800 | 0.9421878088 |
+
+### Actual mean ± standard deviation
+
+| Metric | LR mean ± SD | RF mean ± SD |
+|---|---:|---:|
+| Accuracy | 0.7187099079 ± 0.0031381334 | 0.8687601938 ± 0.0018449263 |
+| Precision | 0.7265830496 ± 0.0036320090 | 0.9072753762 ± 0.0026204631 |
+| Recall | 0.7339871627 ± 0.0045912485 | 0.8320554536 ± 0.0023652752 |
+| F1 | 0.7302560221 ± 0.0030774985 | 0.8680357341 ± 0.0018515066 |
+| ROC-AUC | 0.7841766771 ± 0.0013744862 | 0.9425990056 ± 0.0013890773 |
+
+### Stability, security interpretation and limitations
+
+RF scores higher on all five metrics in every fold here. Its recall SD is about 0.00237 vs
+LR's 0.00459, and precision SD about 0.00262 vs 0.00363. Both models vary relatively little across
+these shuffled stratified partitions. RF's ROC-AUC SD is slightly **larger** than LR's, so this is
+not evidence that RF has lower variance on every metric. A single shuffled five-fold run does
+not measure variance across many seeds or model configurations and cannot establish statistical
+significance. Fold-training sets overlap substantially; five scores are not independent draws.
+
+Recall matters because false negatives are missed phishing/spam; mean RF recall ~0.832 still
+leaves substantial misses. Precision matters because false positives cause unnecessary alarms;
+RF mean precision ~0.907 is stronger than LR's ~0.727 here. Neither alone is sufficient: high
+precision can coexist with poor attack coverage, while chasing recall can swamp users with false
+alarms. F1 offers a balance, not an explicit security cost model. AUC measures ranking, not
+calibration or recall at an operational threshold.
+
+CV replicates the broad LR/RF comparison inside training data, but does not prove deployment
+safety or eliminate the earlier source-shortcut and near-duplicate risks. Random folds may share
+source style and near-duplicate templates, making biased performance look stable. Mixed phishing/
+spam labels and old source data also remain limitations. No grouping/time-based evaluation,
+per-source CV, learning curve, calibration or final test measurement has been performed. The
+held-out test set remains reserved; using it to choose CV settings or models would weaken its
+role as final independent evidence.
+
+### Verification and interview takeaways
+
+Focused tests check five folds for both models, exact repeatability, output keys/ranges, mean/SD
+calculations, mismatched-row/insufficient-class rejection, and five independent LR scaler fits.
+A script-level test makes held-out validation/test access raise, proving the entry point uses
+only the supplied training partition. The caller's original LR pipeline remains unfitted after
+CV because sklearn fits clones. Phase 2 and both model factories remain unchanged.
+Focused CV tests: **5 passed**. Full suite after this step: **67 passed**, with no saved artifacts.
+
+An inferred sklearn signature incorrectly typed `error_score` as a float only. The valid runtime
+option `"raise"` was retained with a narrow annotation instead of replacing it with silent NaNs.
+
+Interview questions:
+1. Why not scale the full training set before CV? Fold-validation values would influence the scaler,
+   leaking information into each fold's model. Fit the pipeline independently inside every fold.
+2. What does small SD prove? Stability under these particular partitions, not causal signal or
+   real-world generalization; fold scores overlap in their training data.
+3. Why stratify? Preserve approximate class balance so changing priors do not dominate comparisons.
+4. Why not use held-out validation/test inside CV? It would no longer be an independent evaluation
+   boundary. CV here measures only the original training split.
+5. Did CV improve the models? No configuration changed; it measured performance/stability.
+
+Stop point: Phase 3 Step 3 only. No class-weight experiments, threshold tuning, serialization,
+model selection or ensemble work has started.

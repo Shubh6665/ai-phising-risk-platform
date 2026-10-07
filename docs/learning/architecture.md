@@ -44,7 +44,7 @@ The project targets Python 3.11 to 3.13 and is developed on Python 3.12, with th
 ## Important Decisions
 
 1. **No Microservices**: We deliberately avoided Kubernetes, Kafka, and multiple services. They add operational complexity that distracts from the core AI engineering goals.
-2. **Kaggle for Training**: NLP models (Transformers) will be trained remotely on Kaggle GPUs to avoid local hardware bottlenecks, but the *source code* remains in this repository to act as the single source of truth.
+2. **Kaggle for Training**: NLP models (Transformers) are trained remotely on Kaggle GPUs to avoid local hardware bottlenecks. The source code lives in this GitHub repository (`https://github.com/Shubh6665/ai-phising-risk-platform.git`). The Kaggle notebook clones the repository at runtime via `git clone --depth 1` (Internet must be ON). Phishing CSV files come from the separately attached Kaggle Input dataset. These two concerns are deliberately kept separate: the GitHub repo never contains raw dataset files, and the dataset attachment never contains project source. This is the **two-source pattern**: GitHub → code; Kaggle Input → data.
 3. **LLM Provider Agnostic**: The agent is designed to use Gemini 3.8 Flash (via Google AI Studio free tier) as the primary provider, with Groq as a fallback, controlled purely via configuration (`src/config.py`), not by writing provider-specific product features.
 
 ## Interview Perspective

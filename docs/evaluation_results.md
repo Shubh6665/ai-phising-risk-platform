@@ -186,7 +186,13 @@ Kaggle GPU fine-tuning is now complete. The notebook `notebooks/02_nlp_training.
 | Recall | 0.995313 |
 | F1 | 0.994924 |
 | ROC-AUC | 0.999773 |
-| Loss | 0.031694 |
+| Validation Loss | 0.031694 |
+| Training Loss | 0.041000 |
+
+Confusion matrix `[[TN, FP], [FN, TP]]`: **`[[5902, 35], [30, 6370]]`**.
+**35 false alarms, 30 missed phishing/spam examples**.
+
+*(Note: Validation loss increased from `0.0254` at Epoch 1 to `0.0317` at Epoch 3, indicating loss overfitting, although validation F1 improved slightly. The best checkpoint by F1 was saved.)*
 
 *(Note: The test set was **NOT** evaluated.)*
 

@@ -58,3 +58,6 @@ chroma_db/
 .DS_Store
 .vscode/
 .idea/
+
+# Temporary executed notebooks
+*_executed.ipynb

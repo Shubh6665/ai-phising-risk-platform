@@ -297,7 +297,7 @@ Training dataset par actual token lengths measure ki gayin. Max length **512** s
 - seed 42, FP16 mixed precision
 - Epoch-wise validation and save, best checkpoint by validation F1 restored.
 
-### Actual validation results
+### Actual validation results (Tesla T4 GPU)
 
 | Metric | DistilBERT validation |
 |---|---:|
@@ -306,7 +306,10 @@ Training dataset par actual token lengths measure ki gayin. Max length **512** s
 | Recall | 0.995313 |
 | F1 | 0.994924 |
 | ROC-AUC | 0.999773 |
-| Loss | 0.031694 |
+| Validation Loss | 0.031694 |
+| Training Loss | 0.041000 |
+
+*(Note: Validation loss increased during training from `0.0254` to `0.0317`, which shows loss overfitting, but validation F1 still improved so the best checkpoint was retained.)*
 
 *(Note: Test split par evaluation abhi nahi hua hai.)*
 

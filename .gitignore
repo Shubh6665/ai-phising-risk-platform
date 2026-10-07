@@ -44,6 +44,12 @@ model_artifacts/*
 !model_artifacts/.gitkeep
 *.joblib
 *.pkl
+# Transformer weights/checkpoints git mein kabhi nahi.
+*.safetensors
+pytorch_model*.bin
+training_args.bin
+*.pt
+*.pth
 
 # RAG Database
 chroma_db/

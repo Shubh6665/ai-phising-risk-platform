@@ -1,0 +1,13 @@
+{
+  "provenance": "Phase 4 Step 1 measured validation run, recorded at commit f194c31; no rerun.",
+  "training_rows": 57574,
+  "validation_rows": 12337,
+  "metrics": {
+    "accuracy": 0.9850855151171274,
+    "precision": 0.9844139650872819,
+    "recall": 0.986875,
+    "f1": 0.9856429463171036,
+    "roc_auc": 0.9987274717870978,
+    "confusion_matrix": [[5837, 100], [84, 6316]]
+  }
+}

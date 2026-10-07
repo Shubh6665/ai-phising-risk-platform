@@ -166,4 +166,21 @@ effects, case-normalized text collisions, mixed labels aur historical data high 
 kar sakte hain. No source-disjoint/temporal study, calibrated probabilities, NLP CV/test evaluation,
 serving benchmark ya production-generalization proof. Existing classical model replace nahi kiya.
 
-**Stop point: Phase 4 Step 1 only; no transformer/Kaggle/HF/ensemble work.**
+## Phase 4 Step 2 — DistilBERT status: Kaggle run pending
+
+Kaggle-ready orchestration exists in `notebooks/02_nlp_training.ipynb`, with reusable helpers in
+`src/data/nlp_dataset.py` and `src/models/nlp_classifier.py`. The notebook verifies the exact
+Phase 2 split/data manifest, audits training-only token lengths, gates training on a real CUDA
+GPU and gates Hub upload after validation/reload review. Initial configuration is 3 epochs,
+learning rate `2e-5`, weight decay `0.01`, batch 8 with accumulation 2, seed 42, FP16,
+epoch-wise validation/save and best validation F1 checkpoint. Candidate max length (128/256,
+90% coverage target under 256 cap) is selected only after actual training-length measurement.
+
+**No Kaggle GPU run has been executed from this environment yet.** Therefore no GPU name, actual
+length distribution/max length, training or validation loss, DistilBERT validation metric,
+confusion matrix, HF model identifier or Hub reload result is claimed here. The held-out test
+remains untouched. Local contract/full tests pass; remote results must be added only from the
+executed notebook report.
+
+**Stop point: Phase 4 Step 2 preparation only; no verified transformer run, FastAPI, RAG, HF
+publication, ensemble or later-phase work.**

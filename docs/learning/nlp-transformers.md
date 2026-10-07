@@ -257,4 +257,89 @@ confusion matrix list bhi include karta hai; scalar metric keys par float cast k
 text/metrics change nahi karte, typing clarify karte hain. Real training run aur unit tests mein
 failure nahi hua; convergence warning hoti toh script error raise karti, silently report nahi banati.
 
-**Stop: Phase 4 Step 1 only.** No transformer/Kaggle/HF training, serialization or ensemble work.
+## Phase 4 Step 2 — DistilBERT fine-tuning preparation (remote run pending)
+
+Is repository step mein **Kaggle-ready notebook aur reusable source helpers** implement hue hain;
+actual Kaggle GPU training, validation run, model save, Hub push/reload abhi execute nahi hue.
+Isliye GPU name, token-length distribution, chosen max length, losses, DistilBERT metrics aur
+HF model identifier abhi report nahi kiye ja sakte. In values ko invent karna learning-first
+project ke against hoga.
+
+### Transformer intuition
+
+Transformer sequence ke har token ka contextual representation surrounding tokens ke through
+self-attention se banata hai. TF-IDF fixed lexical columns deta hai; transformer learned
+contextual hidden states deta hai. Self-attention useful context combine karta hai, but quadratic
+attention cost ki wajah se sequence length practical constraint hai.
+
+**DistilBERT** BERT ka smaller distilled encoder hai: project ke Kaggle GPU constraint ke liye
+chosen manageable checkpoint `distilbert/distilbert-base-uncased`. Pretrained model ko scratch
+se train nahi karte, kyunki language representation already learned hoti hai; labeled project
+emails se task adaptation cheaper hai. Fine-tuning mein encoder weights aur new two-class
+classification head update honge. Tokenizer vocabulary fixed pretrained artifact hai—project
+text par fit nahi hoti.
+
+`AutoTokenizer` text ko WordPiece/subword tokens mein convert karta hai. Rare words, URLs ya
+unknown strings multiple subwords ban sakte hain. `input_ids` vocabulary ke integer indices
+hain; `attention_mask` real token=1 aur padding=0 mark karta hai. Sequence-classification
+model first special token (`[CLS]` conceptual BERT classification position; DistilBERT uses
+its first-token representation) se contextual vector lekar classification head ko deta hai.
+Head two logits banata hai; softmax se classes `0=legitimate`, `1=phishing_spam` probabilities.
+
+### Reusable run design
+
+`src/data/nlp_dataset.py` same Phase 2 raw six-CSV → deterministic cleaning/dedup → seed-42
+split flow use karta hai. It exposes only train/validation text+labels, while test ka counts
+and label counts manifest audit ke liye record karta hai; test text/tokenization/prediction
+expose nahi hota. CSV hashes aur ordered train/validation text-label hashes se Kaggle input
+identity verify hoti hai. Current manifest counts: **57,574 train / 12,337 validation /
+12,338 test**, with Phase 2 raw **82,486** and cleaned **82,249** rows.
+
+`src/models/nlp_classifier.py` lazy-imports optional HF/Torch libraries, so local dependency-light
+suite importable rehti hai. It provides:
+
+- train-only full token-length audit and predeclared max-length selection;
+- `NLPTrainingConfig` with seed 42, 3 epochs, batch 8 × accumulation 2, LR `2e-5`, weight decay
+  `0.01`, warmup ratio `0.1`, linear scheduler and FP16;
+- fixed tokenizer/model loading, train/validation-only tokenization, dynamic padding;
+- Hugging Face `Trainer`, epoch-wise validation/save, best checkpoint by validation F1;
+- local probability/prediction reload equivalence check and aggregate report helpers.
+
+`notebooks/02_nlp_training.ipynb` orchestration cells install the project on Kaggle, verify
+exactly one CUDA GPU and print actual GPU name, show token sample, measure **training-only**
+length percentiles, then choose the smallest candidate among 128/256 reaching predeclared 90%
+coverage under 256 memory cap. If coverage is not met, 256 is still selected and truncation
+fraction/removed tokens are reported. Right truncation preserves the cleaned subject/body prefix
+but can lose later URLs, quoted material or closing instructions. Dynamic padding pads only to
+the longest example in each batch. OOM retry is not automatic; lower batch + higher accumulation
+and its information/runtime tradeoff must be recorded as a new explicit run.
+
+Two notebook approvals intentionally default False: inspect truncation report before training,
+and inspect validation/loss/reload before HF upload. CPU fallback is forbidden. Test is never
+passed to Trainer/evaluation. Hub upload is private by default, uses Kaggle Secret `HF_TOKEN`,
+never prints the token, and uploads only model/tokenizer plus aggregate model card—not raw emails
+or optimizer checkpoints. Public upload needs separate dataset license/privacy review.
+
+### Current verification and limitations
+
+Local focused tests: **9 passed**; full suite: **104 passed**. Notebook JSON/code syntax validated;
+all code-cell outputs remain empty and unexecuted. New helper diagnostics are clean. Actual
+Kaggle runtime, CUDA use, memory/quota behavior, training/validation loss curve, DistilBERT
+validation metrics and Hub reload remain **pending**. Existing source-style shortcuts,
+near-duplicates, mixed labels, historical data and random source composition remain limitations;
+a future high score would not prove robust phishing understanding.
+
+Interview takeaways:
+1. Why pretrained fine-tuning? Scratch training needs much more data/compute; fine-tuning adapts
+   general language representations to this labeled task.
+2. Why max length? Transformer memory/attention cost grows with sequence length; finite positions
+   force a documented truncation tradeoff.
+3. Does tokenizer fit on our emails? No. Pretrained vocabulary/merge rules are fixed; only model
+   parameters train on train labels.
+4. Why dynamic padding? Avoid padding every email to global maximum, reducing wasted GPU memory.
+5. Why test only after development decisions? Test remains independent held-out evidence.
+6. Why not claim DistilBERT understands phishing from a score? Dataset shortcuts and validation
+   distribution can produce high scores without robust semantic generalization.
+
+**Stop: Phase 4 Step 2 implementation/preparation only.** No verified remote run yet; no FastAPI,
+RAG, LangGraph, ensemble or later phase.

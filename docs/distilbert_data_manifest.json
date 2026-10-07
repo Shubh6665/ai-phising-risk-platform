@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "split_seed": 42,
+  "raw_rows": 82486,
+  "cleaned_rows": 82249,
+  "raw_csv_sha256": {
+    "CEAS_08.csv": "22375e7d5f5a8229dbe987914ee9b3705656c590038662a7df6054629b376074",
+    "Enron.csv": "99933d3233510cf5dc2ee7768ddc609425cb8002bf5d7691d9a7157ffa5fd318",
+    "Ling.csv": "c133792260f18b251e9377b9cb31bef226322af6dc0d79841f61c67489929eca",
+    "Nazario.csv": "b8fbc4158fbdfaff1ed98584c43d72e283c6352d7ade4d457d34c1d79488d184",
+    "Nigerian_Fraud.csv": "f5d6930763cae6feeae6484131c79655a7440abbb97d6f51eab757aea4e6ab4b",
+    "SpamAssasin.csv": "3bfe8f8abff89f69a98456be50413c2fcb20a476141116dd84ee1507b980c00e"
+  },
+  "counts": {
+    "train": 57574,
+    "validation": 12337,
+    "test": 12338
+  },
+  "label_counts": {
+    "train": {
+      "0": 27707,
+      "1": 29867
+    },
+    "validation": {
+      "0": 5937,
+      "1": 6400
+    },
+    "test": {
+      "0": 5938,
+      "1": 6400
+    }
+  },
+  "ordered_text_label_sha256": {
+    "train": "2e65232a1c172fa3c6b80fd7514de69fc2bb9460608f433d5989f0a337c4e428",
+    "validation": "08777b49ed7c1a21de2cd5c756f6184f89d2be4d96bd22519a6fbd07bccb27de"
+  }
+}

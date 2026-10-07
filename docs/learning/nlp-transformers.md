@@ -257,13 +257,9 @@ confusion matrix list bhi include karta hai; scalar metric keys par float cast k
 text/metrics change nahi karte, typing clarify karte hain. Real training run aur unit tests mein
 failure nahi hua; convergence warning hoti toh script error raise karti, silently report nahi banati.
 
-## Phase 4 Step 2 — DistilBERT fine-tuning preparation (remote run pending)
+## Phase 4 Step 2 — DistilBERT fine-tuning results
 
-Is repository step mein **Kaggle-ready notebook aur reusable source helpers** implement hue hain;
-actual Kaggle GPU training, validation run, model save, Hub push/reload abhi execute nahi hue.
-Isliye GPU name, token-length distribution, chosen max length, losses, DistilBERT metrics aur
-HF model identifier abhi report nahi kiye ja sakte. In values ko invent karna learning-first
-project ke against hoga.
+Is repository step mein **Kaggle-ready notebook aur reusable source helpers** implement hue, aur actual Kaggle GPU training successfully execute ho gayi hai. The notebook was executed using the two-source strategy (project source cloned from GitHub `main`, dataset from Kaggle Input).
 
 ### Transformer intuition
 
@@ -286,60 +282,53 @@ model first special token (`[CLS]` conceptual BERT classification position; Dist
 its first-token representation) se contextual vector lekar classification head ko deta hai.
 Head two logits banata hai; softmax se classes `0=legitimate`, `1=phishing_spam` probabilities.
 
-### Reusable run design
+### Reusable run design aur actual execution
 
 `src/data/nlp_dataset.py` same Phase 2 raw six-CSV → deterministic cleaning/dedup → seed-42
-split flow use karta hai. It exposes only train/validation text+labels, while test ka counts
-and label counts manifest audit ke liye record karta hai; test text/tokenization/prediction
-expose nahi hota. CSV hashes aur ordered train/validation text-label hashes se Kaggle input
-identity verify hoti hai. Current manifest counts: **57,574 train / 12,337 validation /
-12,338 test**, with Phase 2 raw **82,486** and cleaned **82,249** rows.
+split flow use karta hai. It exposes only train/validation text+labels.
 
-`src/models/nlp_classifier.py` lazy-imports optional HF/Torch libraries, so local dependency-light
-suite importable rehti hai. It provides:
+**Token Length aur Truncation**:
+Training dataset par actual token lengths measure ki gayin. Max length **512** select ki gayi kyunki T4 GPU par memory headroom comfortable (~14.8 GB free) tha. Lekin 512 length par bhi, **24.77% of training documents exceed this length and are truncated**. This is a significant limitation: 25% emails ka trailing context (e.g. URLs, signatures) discard ho raha hai (right truncation). Dynamic padding ensure karti hai ki har micro-batch sirf apni longest sequence tak pad ho, minimizing wasted computation.
 
-- train-only full token-length audit and predeclared max-length selection;
-- `NLPTrainingConfig` with seed 42, 3 epochs, batch 8 × accumulation 2, LR `2e-5`, weight decay
-  `0.01`, warmup ratio `0.1`, linear scheduler and FP16;
-- fixed tokenizer/model loading, train/validation-only tokenization, dynamic padding;
-- Hugging Face `Trainer`, epoch-wise validation/save, best checkpoint by validation F1;
-- local probability/prediction reload equivalence check and aggregate report helpers.
+**Training Configuration**:
+- 3 epochs
+- learning rate `2e-5`, weight decay `0.01`, warmup ratio `0.1`
+- batch 8 with gradient accumulation 2 (effective batch 16)
+- seed 42, FP16 mixed precision
+- Epoch-wise validation and save, best checkpoint by validation F1 restored.
 
-`notebooks/02_nlp_training.ipynb` orchestration cells install the project on Kaggle, verify
-exactly one CUDA GPU and print actual GPU name, show token sample, measure **training-only**
-length percentiles, then choose the smallest candidate among 128/256 reaching predeclared 90%
-coverage under 256 memory cap. If coverage is not met, 256 is still selected and truncation
-fraction/removed tokens are reported. Right truncation preserves the cleaned subject/body prefix
-but can lose later URLs, quoted material or closing instructions. Dynamic padding pads only to
-the longest example in each batch. OOM retry is not automatic; lower batch + higher accumulation
-and its information/runtime tradeoff must be recorded as a new explicit run.
+### Actual validation results
 
-Two notebook approvals intentionally default False: inspect truncation report before training,
-and inspect validation/loss/reload before HF upload. CPU fallback is forbidden. Test is never
-passed to Trainer/evaluation. Hub upload is private by default, uses Kaggle Secret `HF_TOKEN`,
-never prints the token, and uploads only model/tokenizer plus aggregate model card—not raw emails
-or optimizer checkpoints. Public upload needs separate dataset license/privacy review.
+| Metric | DistilBERT validation |
+|---|---:|
+| Accuracy | 0.994731 |
+| Precision | 0.994536 |
+| Recall | 0.995313 |
+| F1 | 0.994924 |
+| ROC-AUC | 0.999773 |
+| Loss | 0.031694 |
 
-### Current verification and limitations
+*(Note: Test split par evaluation abhi nahi hua hai.)*
 
-Local focused tests: **9 passed**; full suite: **104 passed**. Notebook JSON/code syntax validated;
-all code-cell outputs remain empty and unexecuted. New helper diagnostics are clean. Actual
-Kaggle runtime, CUDA use, memory/quota behavior, training/validation loss curve, DistilBERT
-validation metrics and Hub reload remain **pending**. Existing source-style shortcuts,
-near-duplicates, mixed labels, historical data and random source composition remain limitations;
-a future high score would not prove robust phishing understanding.
+### Hugging Face Artifacts
+
+- **Repository**: `shubhsingh0700/phishing-risk-distilbert` (Private)
+- **Revision**: `0fa035f65ea98c94a33f24778c210695636efddd`
+- **Verification**: Both local reload and Hugging Face reload equivalence tests passed exactly.
+
+### Limitations aur interview takeaways
+
+High validation scores (F1 ~0.995) misleading ho sakte hain. Random splits source-specific vocabulary/style ko share karte hain, aur exact deduplication near-duplicate/template leakage eliminate nahi karti. High text scores shortcut learning reflect kar sakte hain, genuine robust phishing semantics nahi. No source-disjoint/temporal validation was performed.
 
 Interview takeaways:
 1. Why pretrained fine-tuning? Scratch training needs much more data/compute; fine-tuning adapts
    general language representations to this labeled task.
-2. Why max length? Transformer memory/attention cost grows with sequence length; finite positions
-   force a documented truncation tradeoff.
+2. Why max length 512? Transformer memory/attention cost grows with sequence length. 512 was the maximum supported length, fully utilizing available T4 memory while maximizing coverage.
 3. Does tokenizer fit on our emails? No. Pretrained vocabulary/merge rules are fixed; only model
    parameters train on train labels.
 4. Why dynamic padding? Avoid padding every email to global maximum, reducing wasted GPU memory.
 5. Why test only after development decisions? Test remains independent held-out evidence.
 6. Why not claim DistilBERT understands phishing from a score? Dataset shortcuts and validation
-   distribution can produce high scores without robust semantic generalization.
+   distribution can produce high scores without robust semantic generalization. Also, 25% of training emails are truncated, losing information.
 
-**Stop: Phase 4 Step 2 implementation/preparation only.** No verified remote run yet; no FastAPI,
-RAG, LangGraph, ensemble or later phase.
+**Stop: Phase 4 Step 2 implementation complete.** No FastAPI, RAG, LangGraph, ensemble or test evaluation has been run.

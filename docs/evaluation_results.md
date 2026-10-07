@@ -166,21 +166,38 @@ effects, case-normalized text collisions, mixed labels aur historical data high 
 kar sakte hain. No source-disjoint/temporal study, calibrated probabilities, NLP CV/test evaluation,
 serving benchmark ya production-generalization proof. Existing classical model replace nahi kiya.
 
-## Phase 4 Step 2 — DistilBERT status: Kaggle run pending
+## Phase 4 Step 2 — DistilBERT fine-tuning results
 
-Kaggle-ready orchestration exists in `notebooks/02_nlp_training.ipynb`, with reusable helpers in
-`src/data/nlp_dataset.py` and `src/models/nlp_classifier.py`. The notebook verifies the exact
-Phase 2 split/data manifest, audits training-only token lengths, gates training on a real CUDA
-GPU and gates Hub upload after validation/reload review. Initial configuration is 3 epochs,
-learning rate `2e-5`, weight decay `0.01`, batch 8 with accumulation 2, seed 42, FP16,
-epoch-wise validation/save and best validation F1 checkpoint. Candidate max length (128/256,
-90% coverage target under 256 cap) is selected only after actual training-length measurement.
+Kaggle GPU fine-tuning is now complete. The notebook `notebooks/02_nlp_training.ipynb` was executed with a two-source strategy (project source from GitHub `main`, data from Kaggle Input).
 
-**No Kaggle GPU run has been executed from this environment yet.** Therefore no GPU name, actual
-length distribution/max length, training or validation loss, DistilBERT validation metric,
-confusion matrix, HF model identifier or Hub reload result is claimed here. The held-out test
-remains untouched. Local contract/full tests pass; remote results must be added only from the
-executed notebook report.
+### Actual configuration and token length decision
 
-**Stop point: Phase 4 Step 2 preparation only; no verified transformer run, FastAPI, RAG, HF
-publication, ensemble or later-phase work.**
+- **Tokenizer/Truncation**: Pretrained `distilbert-base-uncased` tokenizer. Right truncation, dynamic padding.
+- **Max length**: `512` (selected to comfortably fit T4 16GB memory while minimizing truncation).
+- **Truncation impact**: Even at 512 tokens, **24.77% of training documents exceed this length and are truncated**. This means a quarter of the emails lose their later tokens (e.g. trailing URLs, signatures).
+- **Training**: 3 epochs, learning rate `2e-5`, weight decay `0.01`, batch 8 with gradient accumulation 2 (effective batch 16), seed 42, FP16. Epoch-wise validation and save, best checkpoint by validation F1 restored.
+
+### Actual validation results
+
+| Metric | DistilBERT validation |
+|---|---:|
+| Accuracy | 0.994731 |
+| Precision | 0.994536 |
+| Recall | 0.995313 |
+| F1 | 0.994924 |
+| ROC-AUC | 0.999773 |
+| Loss | 0.031694 |
+
+*(Note: The test set was **NOT** evaluated.)*
+
+### Hugging Face Artifacts
+
+- **Repository**: `shubhsingh0700/phishing-risk-distilbert` (Private)
+- **Revision**: `0fa035f65ea98c94a33f24778c210695636efddd`
+- **Verification**: Both local reload and Hugging Face reload equivalence tests passed exactly.
+
+### Limitations
+
+- **Truncation**: 24.77% of training documents are truncated, discarding potentially crucial semantic information at the end of long emails.
+- **Shortcut Risks**: The high validation scores (F1 ~0.995) must be viewed skeptically. Random splits can share source-specific stylistic shortcuts or near-duplicate templates. This result does not guarantee that the model has learned robust phishing semantics for live production use, and no temporal/source-disjoint evaluation was performed.
+- **Stop point**: Phase 4 Step 2 implementation only. No FastAPI, RAG, LangGraph, ensemble, or test evaluation has been run.

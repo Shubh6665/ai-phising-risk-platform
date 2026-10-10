@@ -61,3 +61,9 @@ chroma_db/
 
 # Temporary executed notebooks
 *_executed.ipynb
+
+# Learning & agent artifacts (tracked in ai-phising-project.git only)
+docs/learning/
+.agents/
+implementation_plan.md
+AGENTS.md

@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: Optional[str] = None
     GROQ_API_KEY: Optional[str] = None
     
+    # Hugging Face token for private DistilBERT model
+    HF_TOKEN: Optional[str] = None
+    
     # Database Configuration (for Phase 6+)
     DATABASE_URL: Optional[str] = None
     

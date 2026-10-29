@@ -22,6 +22,20 @@ class AnalyzeRequest(BaseModel):
         return value
 
 
+class SecurityEvidenceItem(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    chunk_id: str = Field(..., description="Deterministic chunk identifier.")
+    content: str = Field(..., description="Extracted knowledge-base guidance excerpt.")
+    similarity: float = Field(..., ge=0.0, le=1.0, description="Cosine similarity score [0.0, 1.0].")
+    document_name: str = Field(..., description="Source document file name.")
+    document_title: str | None = Field(default=None, description="Document title.")
+    heading: str | None = Field(default=None, description="Section heading hierarchy.")
+    document_type: str = Field(..., description="Classification: source_backed_guidance, mock, etc.")
+    source_attribution: str = Field(..., description="Official standard or issuing body attribution.")
+    is_mock: bool = Field(default=False, description="Whether this evidence contains synthetic mock material.")
+
+
 class AnalyzeResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -32,6 +46,14 @@ class AnalyzeResponse(BaseModel):
     nlp_probability: float = Field(..., ge=0.0, le=1.0, description="DistilBERT P(phishing).")
     rule_bonus: float = Field(..., ge=0.0, description="Deterministic rule contribution.")
     analysis_id: str | None = Field(default=None, description="Persisted analysis record UUID.")
+    evidence: list[SecurityEvidenceItem] = Field(
+        default_factory=list,
+        description="Retrieved security knowledge-base evidence relevant to this email.",
+    )
+    evidence_status: str = Field(
+        default="retrieved",
+        description="Evidence retrieval status: 'retrieved', 'empty', 'unavailable', or 'disabled'.",
+    )
 
 
 class ErrorResponse(BaseModel):

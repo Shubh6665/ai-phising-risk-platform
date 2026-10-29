@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     CHROMA_PERSIST_DIR: str = "data/chroma_db"
     CHROMA_COLLECTION_NAME: str = "security_knowledge_base"
     RAG_EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
+    RAG_TOP_K: int = 3
+    RAG_ENABLED: bool = True
     
     model_config = SettingsConfigDict(
         env_file=".env",

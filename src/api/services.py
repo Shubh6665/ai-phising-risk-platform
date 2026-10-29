@@ -1,9 +1,10 @@
 """Service layer for analysis API endpoint."""
 
 import pandas as pd
-from typing import Any
+from typing import Any, Callable
 import structlog
 
+from src.config import settings
 from src.data.loader import build_email_text
 from src.features.feature_pipeline import extract_features
 from src.features.text_features import extract_text_features
@@ -32,11 +33,13 @@ class AnalysisService:
         nlp_model: Any,
         nlp_tokenizer: Any,
         repository: AnalysisRepository | None = None,
+        retriever: Callable[[str, int], list[dict[str, Any]]] | None = None,
     ):
         self.classical_model = classical_model
         self.nlp_model = nlp_model
         self.nlp_tokenizer = nlp_tokenizer
         self.repository = repository
+        self.retriever = retriever
 
     def analyze_email(self, request_id: str, text: str, subject: str | None = None) -> dict:
         """Run preprocessing, model inference, ensemble risk scoring, and persistence."""
@@ -86,14 +89,52 @@ class AnalysisService:
                 classification=assessment.classification,
             )
             analysis_id = str(record.id)
+
+        # 7. Knowledge-base security evidence retrieval (Phase 7C)
+        evidence: list[dict[str, Any]] = []
+        evidence_status = "retrieved"
+
+        if self.retriever is not None:
+            try:
+                raw_hits = self.retriever(combined_text, settings.RAG_TOP_K)
+                if not raw_hits:
+                    evidence_status = "empty"
+                else:
+                    evidence = [
+                        {
+                            "chunk_id": h["id"],
+                            "content": h["content"],
+                            "similarity": round(max(0.0, min(1.0, float(h.get("similarity", 0.0)))), 4),
+                            "document_name": h.get("document_name") or "",
+                            "document_title": h.get("document_title"),
+                            "heading": h.get("heading"),
+                            "document_type": h.get("document_type") or "source_backed_guidance",
+                            "source_attribution": h.get("source_attribution") or "",
+                            "is_mock": bool(h.get("is_mock", False)),
+                        }
+                        for h in raw_hits
+                    ]
+                    evidence_status = "retrieved"
+            except Exception as e:
+                logger.warning(
+                    "rag_retrieval_failed",
+                    request_id=request_id,
+                    error_type=type(e).__name__,
+                )
+                evidence = []
+                evidence_status = "unavailable"
+        else:
+            evidence_status = "disabled" if not settings.RAG_ENABLED else "unavailable"
         
-        # Log success safely (without full email text)
+        # Log success safely (without full email text, queries, or embeddings)
         logger.info(
             "analysis_completed",
             request_id=request_id,
             analysis_id=analysis_id,
             risk_score=assessment.risk_score,
             classification=assessment.classification,
+            evidence_status=evidence_status,
+            evidence_count=len(evidence),
         )
         
         return {
@@ -104,4 +145,6 @@ class AnalysisService:
             "ml_probability": ml_prob,
             "nlp_probability": nlp_prob,
             "rule_bonus": assessment.rule_bonus,
+            "evidence": evidence,
+            "evidence_status": evidence_status,
         }

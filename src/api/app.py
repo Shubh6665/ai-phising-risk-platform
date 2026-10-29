@@ -18,6 +18,7 @@ from src.models.registry import load_model, DEFAULT_MODEL_PATH
 from src.config import settings
 from src.db.session import create_db_engine, create_session_factory, init_db
 from src.db.repository import DatabasePersistenceError
+from src.rag.embeddings import SentenceTransformerEmbedder
 
 logger = structlog.get_logger(__name__)
 
@@ -77,6 +78,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             app.state.db_engine = None
             app.state.db_session_factory = None
             logger.warning("database_url_not_configured")
+
+        # 4. Initialize RAG Embedder if enabled and not already injected (e.g. by test doubles)
+        if getattr(app.state, "rag_embedder", None) is None:
+            if settings.RAG_ENABLED:
+                try:
+                    app.state.rag_embedder = SentenceTransformerEmbedder(settings.RAG_EMBEDDING_MODEL)
+                    logger.info("rag_embedder_loaded", model=settings.RAG_EMBEDDING_MODEL)
+                except Exception as e:
+                    logger.warning("rag_embedder_load_failed", error=str(e))
+                    app.state.rag_embedder = None
+            else:
+                app.state.rag_embedder = None
+                logger.info("rag_retrieval_disabled_by_config")
         
     except Exception as e:
         logger.error("application_startup_failed", error=str(e))

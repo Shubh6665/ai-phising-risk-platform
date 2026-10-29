@@ -10,6 +10,7 @@ from src.api.dependencies import (
     get_nlp_model,
     get_nlp_tokenizer,
     get_analysis_repository,
+    get_rag_retriever,
 )
 from src.api.services import AnalysisService
 from src.db.repository import AnalysisRepository
@@ -23,8 +24,15 @@ def get_analysis_service(
     nlp_model=Depends(get_nlp_model),
     nlp_tokenizer=Depends(get_nlp_tokenizer),
     repository: AnalysisRepository = Depends(get_analysis_repository),
+    retriever=Depends(get_rag_retriever),
 ) -> AnalysisService:
-    return AnalysisService(classical_model, nlp_model, nlp_tokenizer, repository=repository)
+    return AnalysisService(
+        classical_model,
+        nlp_model,
+        nlp_tokenizer,
+        repository=repository,
+        retriever=retriever,
+    )
 
 
 @router.post(

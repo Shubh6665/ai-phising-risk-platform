@@ -23,6 +23,14 @@ from src.agent.tools import (
     search_security_knowledge,
     knowledge_base_search_tool,
 )
+from src.agent.graph import (
+    build_investigation_graph,
+    run_investigation,
+    validate_input_node,
+    analyze_urls_node,
+    lookup_policy_node,
+    aggregate_findings_node,
+)
 
 __all__ = [
     "URLAnalyzerInput",
@@ -42,5 +50,11 @@ __all__ = [
     "policy_triage_lookup_tool",
     "search_security_knowledge",
     "knowledge_base_search_tool",
+    "build_investigation_graph",
+    "run_investigation",
+    "validate_input_node",
+    "analyze_urls_node",
+    "lookup_policy_node",
+    "aggregate_findings_node",
 ]
 

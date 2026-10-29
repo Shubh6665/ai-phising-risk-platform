@@ -38,6 +38,11 @@ def test_deterministic_escalation_ignores_untrusted_input():
     assert esc is True
     assert "High-uncertainty triage tier" in reason
 
+    # Critical score (88.0): ALWAYS escalates, triggering perimeter containment alert
+    esc_crit, reason_crit = compute_deterministic_escalation(risk_score=88.0, ml_probability=0.9, nlp_probability=0.88)
+    assert esc_crit is True
+    assert "Critical risk tier" in reason_crit
+
 
 def test_url_analyzer_does_not_execute_commands_or_visit_sites():
     """Verify URL analyzer treats hostile payloads strictly as inert text strings."""

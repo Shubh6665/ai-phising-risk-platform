@@ -33,16 +33,51 @@ def test_deterministic_escalation_rules():
     assert esc is True
     assert "Model disagreement" in reason
 
-    # Case 4: Critical score (> 80), model agreement -> No uncertainty escalation
+    # Case 4: Critical score (>= 80), model agreement -> Mandatory critical containment escalation
     esc, reason = compute_deterministic_escalation(risk_score=92.0, ml_probability=0.95, nlp_probability=0.91)
-    assert esc is False
-    assert reason is None
+    assert esc is True
+    assert "Critical risk tier" in reason
 
     # Case 5: Both High uncertainty AND model disagreement
     esc, reason = compute_deterministic_escalation(risk_score=65.0, ml_probability=0.85, nlp_probability=0.45)
     assert esc is True
     assert "High-uncertainty triage tier" in reason
     assert "Model disagreement" in reason
+
+
+def test_deterministic_escalation_boundary_thresholds():
+    """Verify exact threshold boundary behaviors (0.0, 39.9, 40.0, 59.9, 60.0, 79.9, 80.0, 100.0)."""
+    # Low tier (0.0 - 39.9)
+    esc, _ = compute_deterministic_escalation(risk_score=0.0, ml_probability=0.0, nlp_probability=0.0)
+    assert esc is False
+
+    esc, _ = compute_deterministic_escalation(risk_score=39.9, ml_probability=0.3, nlp_probability=0.3)
+    assert esc is False
+
+    # Medium tier (40.0 - 59.9)
+    esc, _ = compute_deterministic_escalation(risk_score=40.0, ml_probability=0.4, nlp_probability=0.4)
+    assert esc is False
+
+    esc, _ = compute_deterministic_escalation(risk_score=59.9, ml_probability=0.5, nlp_probability=0.5)
+    assert esc is False
+
+    # High tier boundary (60.0 - 79.9)
+    esc, reason = compute_deterministic_escalation(risk_score=60.0, ml_probability=0.6, nlp_probability=0.6)
+    assert esc is True
+    assert "High-uncertainty triage tier" in reason
+
+    esc, reason = compute_deterministic_escalation(risk_score=79.9, ml_probability=0.7, nlp_probability=0.7)
+    assert esc is True
+    assert "High-uncertainty triage tier" in reason
+
+    # Critical tier boundary (80.0 - 100.0)
+    esc, reason = compute_deterministic_escalation(risk_score=80.0, ml_probability=0.8, nlp_probability=0.8)
+    assert esc is True
+    assert "Critical risk tier" in reason
+
+    esc, reason = compute_deterministic_escalation(risk_score=100.0, ml_probability=1.0, nlp_probability=1.0)
+    assert esc is True
+    assert "Critical risk tier" in reason
 
 
 def test_create_initial_agent_state():
@@ -76,7 +111,8 @@ def test_create_initial_agent_state():
     assert state["retrieved_evidence"] == []
     assert state["tool_outputs"] == []
     assert state["tool_errors"] == []
-    assert state["requires_escalation"] is False
+    assert state["requires_escalation"] is True
+    assert "Critical risk tier" in state["escalation_reason"]
     assert state["explanation"] is None
     assert state["recommendations"] == []
 

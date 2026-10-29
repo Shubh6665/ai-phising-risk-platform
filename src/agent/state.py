@@ -50,25 +50,39 @@ def compute_deterministic_escalation(
     ml_probability: float,
     nlp_probability: float,
 ) -> tuple[bool, Optional[str]]:
-    """Determine whether an email requires mandatory human SOC analyst review.
+    """Determine whether an email requires mandatory human SOC analyst review or critical containment.
 
     Escalation is strictly governed by deterministic project rules, NOT LLM judgment:
-    1. High uncertainty / quarantine band: risk_score in [60.0, 80.0)
-    2. Statistical vs Deep Learning Model Divergence: abs(ml_probability - nlp_probability) > 0.30
+    1. Critical Risk Tier (risk_score >= 80.0):
+       Mandates immediate perimeter containment, mailbox purge, and high-priority SOC alert
+       under NIST SP 800-61 Rev. 3 and CISA incident response guidance.
+    2. High-Uncertainty Quarantine Tier (60.0 <= risk_score < 80.0):
+       Places message in administrative quarantine, mandating secondary SOC analyst review.
+    3. Statistical vs Deep Learning Model Divergence (abs(ml_probability - nlp_probability) > 0.30):
+       Indicates contradictory signals between statistical features and transformer tokens.
+
+    Low (< 40.0) and Medium (40.0 <= score < 60.0) tiers do not trigger operational escalation
+    unless model divergence is detected.
 
     Returns:
         (requires_escalation, escalation_reason)
     """
     reasons: list[str] = []
 
-    # Rule 1: High risk triage band requires SOC analyst verification
-    if 60.0 <= risk_score < 80.0:
+    # Rule 1: Critical risk tier requires high-priority SOC containment alert
+    if risk_score >= 80.0:
         reasons.append(
-            f"Risk score ({risk_score:.1f}) falls in the High-uncertainty triage tier (60.0–79.9); "
+            f"Critical risk tier (score {risk_score:.1f} >= 80.0); "
+            "mandates immediate perimeter containment, mailbox purge, and high-priority SOC alert."
+        )
+    # Rule 2: High risk triage band requires secondary SOC analyst review
+    elif 60.0 <= risk_score < 80.0:
+        reasons.append(
+            f"High-uncertainty triage tier (score {risk_score:.1f} in 60.0–79.9); "
             "automated quarantine mandates secondary SOC analyst review."
         )
 
-    # Rule 2: Significant model divergence indicating conflicting statistical signals
+    # Rule 3: Significant model divergence indicating conflicting statistical signals
     prob_delta = abs(ml_probability - nlp_probability)
     if prob_delta > 0.30:
         reasons.append(

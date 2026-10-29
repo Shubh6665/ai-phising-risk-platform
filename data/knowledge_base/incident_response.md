@@ -26,8 +26,8 @@ When an incoming email is identified as suspicious or malicious by the triage en
 
 ### Phase 2: Containment
 1. **Mailbox Isolation**:
-   - For `High` risk emails (60.0–84.9): Ensure message remains in central quarantine.
-   - For `Critical` risk emails (85.0–100.0): Immediately purge message from all target mailboxes via tenant-wide API call.
+   - For `High` risk emails (60.0–79.9): Ensure message remains in central quarantine.
+   - For `Critical` risk emails (80.0–100.0): Immediately purge message from all target mailboxes via tenant-wide API call.
 2. **Perimeter Network Containment**:
    - Push malicious URLs and domains to email gateway and firewall blocklists.
    - Block originating IP addresses at the perimeter security boundary.
@@ -60,10 +60,10 @@ When an incoming email is identified as suspicious or malicious by the triage en
 
 | Risk Classification | Application Score | Containment SLA | Responsible Role | Mandatory Escalation Criteria |
 |---|---|---|---|---|
-| **Low** | 0.0 – 29.9 | N/A (Standard Delivery) | Automated Gateway | None |
-| **Medium** | 30.0 – 59.9 | 4 hours (Audit review) | Tier-1 Security Analyst | User reports clicking unverified link |
-| **High** | 60.0 – 84.9 | 1 hour | Tier-1 Security Analyst | Credential submission or executive impersonation |
-| **Critical** | 85.0 – 100.0 | 15 minutes | Tier-2 Senior Analyst / Incident Commander | Active session compromise, malware execution, or wire fraud attempt |
+| **Low** | 0.0 – 39.9 | N/A (Standard Delivery) | Automated Gateway | None |
+| **Medium** | 40.0 – 59.9 | 4 hours (Audit review) | Tier-1 Security Analyst | User reports clicking unverified link |
+| **High** | 60.0 – 79.9 | 1 hour | Tier-1 Security Analyst | Credential submission or executive impersonation |
+| **Critical** | 80.0 – 100.0 | 15 minutes | Tier-2 Senior Analyst / Incident Commander | Active session compromise, malware execution, or wire fraud attempt |
 
 ---
 

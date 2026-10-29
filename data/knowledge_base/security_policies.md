@@ -16,14 +16,14 @@ This document specifies the operational triage thresholds, containment triggers,
 
 The platform assigns every evaluated email an application risk score from 0.0 to 100.0, deterministically mapped to four action tiers:
 
-### Low Risk Tier (Score: 0.0 – 29.9)
+### Low Risk Tier (Score: 0.0 – 39.9)
 - **Classification**: `Low`
 - **Triage Action**: `Allow / Standard Delivery`
 - **Gateway Enforcement**: Deliver to recipient inbox without modification.
 - **User Notification**: Standard mailbox delivery; no defensive banners injected.
 - **Audit Requirement**: Record analysis transaction ID, request ID, model probabilities, and text hash in audit log. Retain record for 30 days.
 
-### Medium Risk Tier (Score: 30.0 – 59.9)
+### Medium Risk Tier (Score: 40.0 – 59.9)
 - **Classification**: `Medium`
 - **Triage Action**: `Defensive Delivery / Warning Injected`
 - **Gateway Enforcement**: Deliver to recipient inbox with an external warning header and visual banner:
@@ -34,14 +34,14 @@ The platform assigns every evaluated email an application risk score from 0.0 to
 - **Link Rewriting**: Enable click-time link protection. Disable direct link execution where technically feasible.
 - **User Guidance**: Present recipient with a "Report Phish" self-service option.
 
-### High Risk Tier (Score: 60.0 – 84.9)
+### High Risk Tier (Score: 60.0 – 79.9)
 - **Classification**: `High`
 - **Triage Action**: `Quarantine / Security Analyst Review`
 - **Gateway Enforcement**: Divert message to the centralized Security Operations Center (SOC) quarantine queue. Block delivery to user inbox pending manual or secondary automated review.
 - **User Notification**: Send automated quarantine receipt to the intended recipient informing them that an incoming message from the sender was held for security verification.
 - **Analyst SLA**: Security analyst must review and disposition within 4 business hours.
 
-### Critical Risk Tier (Score: 85.0 – 100.0)
+### Critical Risk Tier (Score: 80.0 – 100.0)
 - **Classification**: `Critical`
 - **Triage Action**: `Immediate Block / Perimeter Containment / Automatic Escalation`
 - **Gateway Enforcement**: Immediate drop of message payload. Message is permanently quarantined and never delivered to the user inbox.

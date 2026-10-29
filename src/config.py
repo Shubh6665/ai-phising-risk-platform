@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     # Database Configuration (for Phase 6+)
     DATABASE_URL: Optional[str] = None
     DATABASE_URL_POOLED: Optional[str] = None
+
+    # RAG / Vector Store Configuration (Phase 7+)
+    CHROMA_PERSIST_DIR: str = "data/chroma_db"
+    CHROMA_COLLECTION_NAME: str = "security_knowledge_base"
+    RAG_EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
     
     model_config = SettingsConfigDict(
         env_file=".env",

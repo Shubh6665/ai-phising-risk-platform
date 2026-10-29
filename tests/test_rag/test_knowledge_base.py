@@ -83,3 +83,18 @@ def test_document_structure_has_markdown_headings():
         content = (KB_DIR / doc_name).read_text(encoding="utf-8")
         h2_headings = [line for line in content.splitlines() if line.startswith("## ")]
         assert len(h2_headings) >= 3, f"{doc_name} should contain at least 3 major sections (##)"
+
+
+def test_policy_thresholds_match_ensemble_classification():
+    """Ensure mock policies and incident response SLAs align with Phase 5 ensemble thresholds."""
+    policies_doc = (KB_DIR / "security_policies.md").read_text(encoding="utf-8")
+    assert "0.0 – 39.9" in policies_doc
+    assert "40.0 – 59.9" in policies_doc
+    assert "60.0 – 79.9" in policies_doc
+    assert "80.0 – 100.0" in policies_doc
+
+    ir_doc = (KB_DIR / "incident_response.md").read_text(encoding="utf-8")
+    assert "0.0 – 39.9" in ir_doc
+    assert "40.0 – 59.9" in ir_doc
+    assert "60.0 – 79.9" in ir_doc
+    assert "80.0 – 100.0" in ir_doc

@@ -1,10 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  * {
+    box-sizing: border-box;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     @apply bg-slate-950 text-slate-100 font-sans antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: #e2e8f0;
+    background-color: #0b0f19;
+  }
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
   }
 }
 
+@layer utilities {
+  /* Subtle clean card styling (Linear / Vercel dark mode feel) */
+  .surface-card {
+    background-color: #111726;
+    border: 1px solid #1e293b;
+  }
+  .surface-card-subtle {
+    background-color: #0d121f;
+    border: 1px solid #1a2234;
+  }
+  .surface-card-hover {
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+  .surface-card-hover:hover {
+    border-color: #334155;
+    background-color: #131b2e;
+  }
+
+  /* Custom subtle scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+}

@@ -12,6 +12,8 @@ from src.features.url_features import extract_url_features
 from src.models.ensemble import compute_risk_score
 from src.models.nlp_classifier import sample_probabilities
 from src.db.repository import AnalysisRepository, hash_email_text
+from src.agent.state import create_initial_agent_state, compute_deterministic_escalation
+from src.agent.llm import generate_deterministic_degraded_explanation
 
 logger = structlog.get_logger(__name__)
 
@@ -34,12 +36,14 @@ class AnalysisService:
         nlp_tokenizer: Any,
         repository: AnalysisRepository | None = None,
         retriever: Callable[[str, int], list[dict[str, Any]]] | None = None,
+        investigation_graph: Any | None = None,
     ):
         self.classical_model = classical_model
         self.nlp_model = nlp_model
         self.nlp_tokenizer = nlp_tokenizer
         self.repository = repository
         self.retriever = retriever
+        self.investigation_graph = investigation_graph
 
     def analyze_email(self, request_id: str, text: str, subject: str | None = None) -> dict:
         """Run preprocessing, model inference, ensemble risk scoring, and persistence."""
@@ -126,6 +130,47 @@ class AnalysisService:
         else:
             evidence_status = "disabled" if not settings.RAG_ENABLED else "unavailable"
         
+        # 8. LangGraph agent investigation & explanation generation (Phase 8D)
+        url_analysis: list[dict[str, Any]] = []
+        explanation_data: dict[str, Any] | None = None
+        requires_escalation, escalation_reason = compute_deterministic_escalation(
+            risk_score=assessment.risk_score,
+            ml_probability=ml_prob,
+            nlp_probability=nlp_prob,
+        )
+
+        agent_state = create_initial_agent_state(
+            request_id=request_id,
+            email_text=text,
+            email_subject=subject,
+            ml_probability=ml_prob,
+            nlp_probability=nlp_prob,
+            risk_score=assessment.risk_score,
+            classification=assessment.classification,
+            analysis_id=analysis_id,
+            rule_bonus=assessment.rule_bonus,
+            retrieved_evidence=evidence,
+        )
+
+        if self.investigation_graph is not None:
+            try:
+                agent_result = self.investigation_graph.invoke(agent_state)
+                url_analysis = agent_result.get("url_analysis", [])
+                requires_escalation = agent_result.get("requires_escalation", requires_escalation)
+                escalation_reason = agent_result.get("escalation_reason", escalation_reason)
+                explanation_data = agent_result.get("structured_explanation")
+            except Exception as e:
+                logger.warning(
+                    "agent_investigation_failed",
+                    request_id=request_id,
+                    error=str(e),
+                )
+                degraded_exp = generate_deterministic_degraded_explanation(agent_state, status="degraded")
+                explanation_data = degraded_exp.model_dump()
+        else:
+            degraded_exp = generate_deterministic_degraded_explanation(agent_state, status="disabled")
+            explanation_data = degraded_exp.model_dump()
+
         # Log success safely (without full email text, queries, or embeddings)
         logger.info(
             "analysis_completed",
@@ -135,6 +180,8 @@ class AnalysisService:
             classification=assessment.classification,
             evidence_status=evidence_status,
             evidence_count=len(evidence),
+            requires_escalation=requires_escalation,
+            urls_analyzed=len(url_analysis),
         )
         
         return {
@@ -147,4 +194,8 @@ class AnalysisService:
             "rule_bonus": assessment.rule_bonus,
             "evidence": evidence,
             "evidence_status": evidence_status,
+            "requires_escalation": requires_escalation,
+            "escalation_reason": escalation_reason,
+            "url_analysis": url_analysis,
+            "explanation": explanation_data,
         }

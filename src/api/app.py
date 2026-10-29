@@ -19,6 +19,8 @@ from src.config import settings
 from src.db.session import create_db_engine, create_session_factory, init_db
 from src.db.repository import DatabasePersistenceError
 from src.rag.embeddings import SentenceTransformerEmbedder
+from src.agent.llm import get_primary_llm, get_fallback_llm
+from src.agent.graph import build_investigation_graph
 
 logger = structlog.get_logger(__name__)
 
@@ -91,6 +93,31 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             else:
                 app.state.rag_embedder = None
                 logger.info("rag_retrieval_disabled_by_config")
+
+        # 5. Initialize LLM Providers & Agent Investigation Graph
+        if getattr(app.state, "primary_llm", None) is None:
+            if settings.LLM_ENABLED:
+                app.state.primary_llm = get_primary_llm()
+            else:
+                app.state.primary_llm = None
+
+        if getattr(app.state, "fallback_llm", None) is None:
+            if settings.LLM_ENABLED:
+                app.state.fallback_llm = get_fallback_llm()
+            else:
+                app.state.fallback_llm = None
+
+        if getattr(app.state, "investigation_graph", None) is None:
+            try:
+                app.state.investigation_graph = build_investigation_graph(
+                    embedder=app.state.rag_embedder,
+                    primary_llm=app.state.primary_llm,
+                    fallback_llm=app.state.fallback_llm,
+                )
+                logger.info("investigation_graph_initialized")
+            except Exception as e:
+                logger.warning("investigation_graph_init_failed", error=str(e))
+                app.state.investigation_graph = None
         
     except Exception as e:
         logger.error("application_startup_failed", error=str(e))

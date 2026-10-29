@@ -53,3 +53,9 @@ def get_rag_retriever(
         )
 
     return _retriever
+
+
+def get_investigation_graph(request: Request) -> Any | None:
+    """Retrieve the pre-compiled LangGraph investigation workflow from app state."""
+    return getattr(request.app.state, "investigation_graph", None)
+

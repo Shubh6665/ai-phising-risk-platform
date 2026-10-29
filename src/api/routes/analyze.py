@@ -11,6 +11,7 @@ from src.api.dependencies import (
     get_nlp_tokenizer,
     get_analysis_repository,
     get_rag_retriever,
+    get_investigation_graph,
 )
 from src.api.services import AnalysisService
 from src.db.repository import AnalysisRepository
@@ -25,6 +26,7 @@ def get_analysis_service(
     nlp_tokenizer=Depends(get_nlp_tokenizer),
     repository: AnalysisRepository = Depends(get_analysis_repository),
     retriever=Depends(get_rag_retriever),
+    investigation_graph=Depends(get_investigation_graph),
 ) -> AnalysisService:
     return AnalysisService(
         classical_model,
@@ -32,6 +34,7 @@ def get_analysis_service(
         nlp_tokenizer,
         repository=repository,
         retriever=retriever,
+        investigation_graph=investigation_graph,
     )
 
 

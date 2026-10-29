@@ -50,7 +50,8 @@ def validate_input_node(state: PhishingAnalysisState) -> dict[str, Any]:
     if nlp_prob is None or not isinstance(nlp_prob, (int, float)) or not (0.0 <= float(nlp_prob) <= 1.0):
         errors.append(f"Invalid 'nlp_probability' ({nlp_prob}); must be numeric between 0.0 and 1.0.")
 
-    validation_status = "passed" if not errors else "failed"
+    is_input_valid = len(errors) == 0
+    validation_status = "passed" if is_input_valid else "failed"
     tool_outputs.append({
         "tool": "validate_input",
         "status": validation_status,
@@ -67,6 +68,7 @@ def validate_input_node(state: PhishingAnalysisState) -> dict[str, Any]:
     return {
         "tool_errors": errors,
         "tool_outputs": tool_outputs,
+        "is_input_valid": is_input_valid,
     }
 
 
@@ -85,6 +87,28 @@ def create_retrieve_knowledge_node(
     def retrieve_knowledge_node(state: PhishingAnalysisState) -> dict[str, Any]:
         tool_outputs = list(state.get("tool_outputs", []))
         tool_errors = list(state.get("tool_errors", []))
+
+        # Reuse pre-retrieved evidence if already retrieved (e.g. from AnalysisService)
+        # Prevents duplicate vector search and duplicate embedding computations!
+        if state.get("evidence_already_retrieved", False) or state.get("retrieved_evidence"):
+            existing_evidence = list(state.get("retrieved_evidence", []))
+            tool_outputs.append({
+                "tool": "knowledge_search",
+                "status": "reused",
+                "results_count": len(existing_evidence),
+            })
+            logger.debug(
+                "investigation_node_executed",
+                node="retrieve_knowledge",
+                request_id=state.get("request_id"),
+                status="reused",
+                results_count=len(existing_evidence),
+            )
+            return {
+                "retrieved_evidence": existing_evidence,
+                "tool_outputs": tool_outputs,
+                "tool_errors": tool_errors,
+            }
 
         # Query construction: combines subject and body prefix (up to 300 chars)
         subject = state.get("email_subject") or ""
@@ -290,9 +314,16 @@ def create_generate_explanation_node(
 
 
 def route_after_aggregation(state: PhishingAnalysisState) -> str:
-    """Conditional edge: skip LLM explanation if validation errors occurred."""
-    if state.get("tool_errors"):
+    """Conditional edge: skip LLM explanation if input validation failed.
+
+    Recoverable downstream tool errors (such as vector store retrieval failure
+    or policy lookup warnings) do not prevent explanation generation.
+    """
+    if not state.get("is_input_valid", True):
         return END
+    for output in state.get("tool_outputs", []):
+        if output.get("tool") == "validate_input" and output.get("status") == "failed":
+            return END
     return "generate_explanation"
 
 

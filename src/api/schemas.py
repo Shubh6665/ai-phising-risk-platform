@@ -1,6 +1,7 @@
 """Pydantic v2 request and response schemas."""
 
 from pydantic import BaseModel, Field, field_validator, ConfigDict
+from src.agent.schemas import InvestigationExplanation, URLObservation
 
 
 class HealthResponse(BaseModel):
@@ -53,6 +54,23 @@ class AnalyzeResponse(BaseModel):
     evidence_status: str = Field(
         default="retrieved",
         description="Evidence retrieval status: 'retrieved', 'empty', 'unavailable', or 'disabled'.",
+    )
+    requires_escalation: bool = Field(
+        default=False,
+        description="Whether deterministic triage rules mandate human analyst or containment escalation.",
+    )
+    escalation_reason: str | None = Field(
+        default=None,
+        description="Reason for deterministic escalation if required.",
+    )
+    url_analysis: list[URLObservation] = Field(
+        default_factory=list,
+        description="Offline lexical analysis of URLs found in the email body.",
+    )
+    explanation: InvestigationExplanation | None = Field(
+        default=None,
+        description="Structured investigation explanation, grounded findings, and defensive recommendations "
+                    "(advisory only; platform does not execute containment actions).",
     )
 
 

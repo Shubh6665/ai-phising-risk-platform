@@ -33,8 +33,10 @@ class PhishingAnalysisState(TypedDict, total=False):
     url_analysis: list[dict[str, Any]]
     policy_guidance: Optional[dict[str, Any]]
     retrieved_evidence: list[dict[str, Any]]
+    evidence_already_retrieved: bool
     tool_outputs: list[dict[str, Any]]
     tool_errors: list[str]
+    is_input_valid: bool
 
     # 4. Deterministic Escalation Governance
     requires_escalation: bool
@@ -108,6 +110,7 @@ def create_initial_agent_state(
     extracted_urls: Optional[list[str]] = None,
     extracted_features: Optional[dict[str, Any]] = None,
     analysis_id: Optional[str] = None,
+    retrieved_evidence: Optional[list[dict[str, Any]]] = None,
 ) -> PhishingAnalysisState:
     """Construct an initial typed agent state populated with pre-computed signals."""
     requires_escalation, escalation_reason = compute_deterministic_escalation(
@@ -115,6 +118,8 @@ def create_initial_agent_state(
         ml_probability=ml_probability,
         nlp_probability=nlp_probability,
     )
+
+    has_pre_retrieved = retrieved_evidence is not None
 
     return {
         "request_id": request_id,
@@ -130,9 +135,11 @@ def create_initial_agent_state(
         "extracted_features": dict(extracted_features) if extracted_features else {},
         "url_analysis": [],
         "policy_guidance": None,
-        "retrieved_evidence": [],
+        "retrieved_evidence": list(retrieved_evidence) if retrieved_evidence else [],
+        "evidence_already_retrieved": has_pre_retrieved,
         "tool_outputs": [],
         "tool_errors": [],
+        "is_input_valid": True,
         "requires_escalation": requires_escalation,
         "escalation_reason": escalation_reason,
         "explanation": None,

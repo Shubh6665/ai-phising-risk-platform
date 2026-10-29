@@ -10,6 +10,7 @@ from src.agent.graph import (
     run_investigation,
 )
 from src.agent.state import create_initial_agent_state
+from src.config import settings
 from src.rag.embeddings import DummyEmbedder
 
 
@@ -393,4 +394,80 @@ def test_graph_with_injected_primary_llm():
     assert final_state["ml_probability"] == 0.8
     assert final_state["nlp_probability"] == 0.7
     assert final_state["requires_escalation"] is True
+
+
+def test_graph_reuses_pre_retrieved_evidence(monkeypatch):
+    """Verify pre-retrieved evidence is reused without calling search_security_knowledge."""
+    monkeypatch.setattr(settings, "GOOGLE_API_KEY", None)
+    monkeypatch.setattr(settings, "GROQ_API_KEY", None)
+
+    pre_evidence = [
+        {
+            "chunk_id": "test_chunk_01",
+            "content": "Pre-retrieved guidance on credential theft.",
+            "similarity": 0.88,
+            "document_name": "attack_patterns.md",
+            "document_title": "Attack Patterns",
+            "heading": "Credential Theft",
+            "document_type": "source_backed_guidance",
+            "source_attribution": "MITRE ATT&CK",
+            "is_mock": False,
+        }
+    ]
+
+    state = create_initial_agent_state(
+        request_id="req-reuse-evidence",
+        email_text="Check out http://example.com/login",
+        ml_probability=0.7,
+        nlp_probability=0.6,
+        risk_score=65.0,
+        classification="High",
+        retrieved_evidence=pre_evidence,
+    )
+
+    with patch("src.agent.graph.search_security_knowledge") as mock_search:
+        final_state = run_investigation(state)
+        # mock_search should NEVER be called because evidence was pre-retrieved
+        mock_search.assert_not_called()
+
+    assert final_state["retrieved_evidence"] == pre_evidence
+    kb_output = next(t for t in final_state["tool_outputs"] if t["tool"] == "knowledge_search")
+    assert kb_output["status"] == "reused"
+    assert kb_output["results_count"] == 1
+
+
+def test_graph_recoverable_tool_error_generates_explanation(monkeypatch):
+    """Verify recoverable tool errors do not skip explanation generation (Audit B regression test)."""
+    monkeypatch.setattr(settings, "GOOGLE_API_KEY", None)
+    monkeypatch.setattr(settings, "GROQ_API_KEY", None)
+
+    state = create_initial_agent_state(
+        request_id="req-recoverable-err",
+        email_text="Urgent: click http://192.168.1.1 to confirm credentials",
+        ml_probability=0.85,
+        nlp_probability=0.80,
+        risk_score=82.0,
+        classification="Critical",
+    )
+
+    with patch("src.agent.graph.search_security_knowledge") as mock_search:
+        from src.agent.schemas import KnowledgeSearchResult
+        mock_search.return_value = KnowledgeSearchResult(
+            query="test",
+            status="error",
+            results_count=0,
+            chunks=[],
+            error_message="ChromaDB connection timeout",
+        )
+        final_state = run_investigation(state)
+
+    # Tool error logged
+    assert any("ChromaDB connection timeout" in err for err in final_state["tool_errors"])
+    # Explanation generator STILL ran and produced structured degraded output
+    tool_names = [t["tool"] for t in final_state["tool_outputs"]]
+    assert "explanation_generator" in tool_names
+    assert final_state["explanation"] is not None
+    assert final_state["structured_explanation"] is not None
+    assert final_state["structured_explanation"]["generation_status"] == "degraded"
+
 

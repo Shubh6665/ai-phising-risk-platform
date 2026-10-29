@@ -74,7 +74,7 @@ class PolicyGuidanceResult(BaseModel):
     technical_handling: str = Field(..., description="SOC / mail gateway technical routing instructions.")
     recommended_controls: list[str] = Field(
         default_factory=list,
-        description="Applicable defensive controls from NIST SP 800-61 / CISA guidance.",
+        description="Applicable defensive controls from NIST SP 800-61 Rev. 3 / CISA guidance.",
     )
     source_attribution: str = Field(..., description="Issuing bodies and canonical source references.")
     is_project_triage_choice: bool = Field(
@@ -173,7 +173,7 @@ class InvestigationExplanation(BaseModel):
     )
     recommended_actions: list[str] = Field(
         default_factory=list,
-        description="Recommended defensive response steps aligned with NIST SP 800-61 and CISA guidance.",
+        description="Recommended defensive response steps aligned with NIST SP 800-61 Rev. 3 and CISA guidance.",
     )
     limitations: list[str] = Field(
         default_factory=list,

@@ -5,8 +5,14 @@ from fastapi import APIRouter, Depends, Request
 import structlog
 
 from src.api.schemas import AnalyzeRequest, AnalyzeResponse
-from src.api.dependencies import get_classical_model, get_nlp_model, get_nlp_tokenizer
+from src.api.dependencies import (
+    get_classical_model,
+    get_nlp_model,
+    get_nlp_tokenizer,
+    get_analysis_repository,
+)
 from src.api.services import AnalysisService
+from src.db.repository import AnalysisRepository
 
 logger = structlog.get_logger(__name__)
 
@@ -16,8 +22,9 @@ def get_analysis_service(
     classical_model=Depends(get_classical_model),
     nlp_model=Depends(get_nlp_model),
     nlp_tokenizer=Depends(get_nlp_tokenizer),
+    repository: AnalysisRepository = Depends(get_analysis_repository),
 ) -> AnalysisService:
-    return AnalysisService(classical_model, nlp_model, nlp_tokenizer)
+    return AnalysisService(classical_model, nlp_model, nlp_tokenizer, repository=repository)
 
 
 @router.post(

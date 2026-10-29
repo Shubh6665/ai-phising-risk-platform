@@ -10,6 +10,7 @@ from src.features.text_features import extract_text_features
 from src.features.url_features import extract_url_features
 from src.models.ensemble import compute_risk_score
 from src.models.nlp_classifier import sample_probabilities
+from src.db.repository import AnalysisRepository, hash_email_text
 
 logger = structlog.get_logger(__name__)
 
@@ -25,13 +26,20 @@ def extract_rule_signals(email_text: str) -> dict[str, bool]:
 
 
 class AnalysisService:
-    def __init__(self, classical_model: Any, nlp_model: Any, nlp_tokenizer: Any):
+    def __init__(
+        self,
+        classical_model: Any,
+        nlp_model: Any,
+        nlp_tokenizer: Any,
+        repository: AnalysisRepository | None = None,
+    ):
         self.classical_model = classical_model
         self.nlp_model = nlp_model
         self.nlp_tokenizer = nlp_tokenizer
+        self.repository = repository
 
     def analyze_email(self, request_id: str, text: str, subject: str | None = None) -> dict:
-        """Run preprocessing, model inference, and ensemble risk scoring."""
+        """Run preprocessing, model inference, ensemble risk scoring, and persistence."""
         # 1. Preprocess and combine text
         # DataFrame is needed for feature_pipeline's extract_features which expects 'subject' and 'body'
         df = pd.DataFrame([{"subject": subject or "", "body": text}])
@@ -62,15 +70,34 @@ class AnalysisService:
         
         # 5. Compute Phase 5 ensemble score
         assessment = compute_risk_score(ml_prob, nlp_prob, rule_signals)
+
+        # 6. Persist result when repository is present
+        analysis_id = None
+        if self.repository is not None:
+            email_hash = hash_email_text(combined_text)
+            record = self.repository.save_analysis_result(
+                request_id=request_id,
+                email_hash=email_hash,
+                ml_probability=ml_prob,
+                nlp_probability=nlp_prob,
+                rule_bonus=assessment.rule_bonus,
+                rule_signals=rule_signals,
+                risk_score=assessment.risk_score,
+                classification=assessment.classification,
+            )
+            analysis_id = str(record.id)
         
         # Log success safely (without full email text)
         logger.info(
             "analysis_completed",
+            request_id=request_id,
+            analysis_id=analysis_id,
             risk_score=assessment.risk_score,
             classification=assessment.classification,
         )
         
         return {
+            "analysis_id": analysis_id,
             "request_id": request_id,
             "risk_score": assessment.risk_score,
             "classification": assessment.classification,

@@ -46,12 +46,14 @@ nlp = [
     "safetensors>=0.4",
 ]
 
-# Phase 6: FastAPI serving layer + API testing
+# Phase 6: FastAPI serving layer + persistence + API testing
 api = [
     "fastapi>=0.111",
     "uvicorn[standard]>=0.29",
     "httpx2>=0.28",    # Required by Starlette 1.7+ TestClient (replaces httpx)
     "structlog>=24.0",
+    "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.1",
 ]
 
 # Phase 7 additions (uncomment when starting Phase 7):

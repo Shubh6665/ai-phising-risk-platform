@@ -6,14 +6,18 @@ import transformers
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from starlette.responses import JSONResponse
 import structlog
 
 from src.api.routes.health import router as health_router
 from src.api.routes.analyze import router as analyze_router
 from src.api.middleware import RequestIDAndLoggingMiddleware
+from src.api.schemas import ErrorResponse
 from src.models.registry import load_model, DEFAULT_MODEL_PATH
 from src.config import settings
+from src.db.session import create_db_engine, create_session_factory, init_db
+from src.db.repository import DatabasePersistenceError
 
 logger = structlog.get_logger(__name__)
 
@@ -61,13 +65,30 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             revision=HF_REVISION,
             device=str(device)
         )
+
+        # 3. Initialize Database Engine & Tables if configured
+        if settings.DATABASE_URL:
+            engine = create_db_engine(settings.DATABASE_URL)
+            app.state.db_engine = engine
+            app.state.db_session_factory = create_session_factory(engine)
+            init_db(engine)
+            logger.info("database_engine_initialized")
+        else:
+            app.state.db_engine = None
+            app.state.db_session_factory = None
+            logger.warning("database_url_not_configured")
         
     except Exception as e:
         logger.error("application_startup_failed", error=str(e))
-        raise RuntimeError(f"Failed to load models during startup: {e}") from e
+        raise RuntimeError(f"Failed to initialize application startup: {e}") from e
         
     yield
     
+    # Clean up database engine
+    if getattr(app.state, "db_engine", None) is not None:
+        app.state.db_engine.dispose()
+        logger.info("database_engine_disposed")
+
     logger.info("application_shutdown")
 
 
@@ -82,6 +103,21 @@ def create_app() -> FastAPI:
     
     # Add Middleware
     app.add_middleware(RequestIDAndLoggingMiddleware)
+
+    # Register Exception Handlers
+    @app.exception_handler(DatabasePersistenceError)
+    async def database_persistence_exception_handler(
+        request: Request, exc: DatabasePersistenceError
+    ) -> JSONResponse:
+        request_id = getattr(request.state, "request_id", None)
+        return JSONResponse(
+            status_code=500,
+            content=ErrorResponse(
+                request_id=request_id,
+                error="database_error",
+                detail="Failed to persist analysis result.",
+            ).model_dump(),
+        )
     
     # Register Routes
     app.include_router(health_router, tags=["Health"])

@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     
     # Database Configuration (for Phase 6+)
     DATABASE_URL: Optional[str] = None
+    DATABASE_URL_POOLED: Optional[str] = None
     
     model_config = SettingsConfigDict(
         env_file=".env",

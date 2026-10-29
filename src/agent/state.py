@@ -40,9 +40,10 @@ class PhishingAnalysisState(TypedDict, total=False):
     requires_escalation: bool
     escalation_reason: Optional[str]
 
-    # 5. Future LLM Generated Explanations (Phase 8B)
+    # 5. LLM Generated Explanations (Phase 8C)
     explanation: Optional[str]
     recommendations: list[str]
+    structured_explanation: Optional[dict[str, Any]]
 
 
 def compute_deterministic_escalation(
@@ -136,5 +137,6 @@ def create_initial_agent_state(
         "escalation_reason": escalation_reason,
         "explanation": None,
         "recommendations": [],
+        "structured_explanation": None,
     }
 

@@ -66,6 +66,8 @@ rag = [
 agent = [
     "langchain-core>=0.2",
     "langgraph>=0.2",
+    "langchain-google-genai>=1.0",
+    "langchain-groq>=0.1",
 ]
 
 [tool.hatch.build.targets.wheel]

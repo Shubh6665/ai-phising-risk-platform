@@ -12,9 +12,19 @@ class Settings(BaseSettings):
     APP_ENV: str = "dev"
     
     # LLM Provider Configuration
-    # We use a single string to determine which provider to use at runtime
+    # Primary: Google AI Studio (Gemini 3.8 Flash)
     LLM_PROVIDER: str = "google"
     LLM_MODEL: str = "gemini-3.8-flash"
+    
+    # Fallback: Groq (OpenAI GPT-OSS 120B)
+    FALLBACK_LLM_PROVIDER: str = "groq"
+    FALLBACK_LLM_MODEL: str = "openai/gpt-oss-120b"
+    
+    # Generation parameters
+    LLM_TEMPERATURE: float = 0.1
+    LLM_TIMEOUT_SECONDS: float = 30.0
+    LLM_MAX_TOKENS: int = 1024
+    LLM_ENABLED: bool = True
     
     # Provider-specific API keys
     # By typing them as Optional[str], Pydantic won't crash if they are missing

@@ -6,9 +6,11 @@ retrieval, lexical URL structure analysis, and policy triage guidance lookup.
 
 from typing import Any, Callable
 import structlog
+from langchain_core.language_models.chat_models import BaseChatModel
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
 
+from src.agent.llm import generate_investigation_explanation
 from src.agent.schemas import KnowledgeSearchChunk
 from src.agent.state import (
     PhishingAnalysisState,
@@ -248,14 +250,63 @@ def aggregate_findings_node(state: PhishingAnalysisState) -> dict[str, Any]:
     }
 
 
+def create_generate_explanation_node(
+    primary_llm: BaseChatModel | None = None,
+    fallback_llm: BaseChatModel | None = None,
+) -> Callable[[PhishingAnalysisState], dict[str, Any]]:
+    """Node factory creating the grounded explanation generation node."""
+    def generate_explanation_node(state: PhishingAnalysisState) -> dict[str, Any]:
+        tool_outputs = list(state.get("tool_outputs", []))
+
+        explanation = generate_investigation_explanation(
+            state=state,
+            primary_llm=primary_llm,
+            fallback_llm=fallback_llm,
+        )
+
+        tool_outputs.append({
+            "tool": "explanation_generator",
+            "status": explanation.generation_status,
+            "provider_used": explanation.provider_used,
+            "evidence_references_count": len(explanation.evidence_references),
+        })
+
+        logger.debug(
+            "investigation_node_executed",
+            node="generate_explanation",
+            request_id=state.get("request_id"),
+            provider_used=explanation.provider_used,
+            generation_status=explanation.generation_status,
+        )
+
+        return {
+            "explanation": explanation.summary,
+            "recommendations": explanation.recommended_actions,
+            "structured_explanation": explanation.model_dump(),
+            "tool_outputs": tool_outputs,
+        }
+
+    return generate_explanation_node
+
+
+def route_after_aggregation(state: PhishingAnalysisState) -> str:
+    """Conditional edge: skip LLM explanation if validation errors occurred."""
+    if state.get("tool_errors"):
+        return END
+    return "generate_explanation"
+
+
 def build_investigation_graph(
     embedder: Embedder | None = None,
+    primary_llm: BaseChatModel | None = None,
+    fallback_llm: BaseChatModel | None = None,
 ) -> CompiledStateGraph:
-    """Build and compile the Phase 8B LangGraph investigation workflow.
+    """Build and compile the Phase 8 LangGraph investigation workflow.
 
     Sequential, deterministic flow:
     START -> validate_input -> (conditional: retrieve_knowledge or aggregate_findings)
-          -> analyze_urls -> lookup_policy -> aggregate_findings -> END
+          -> analyze_urls -> lookup_policy -> aggregate_findings
+          -> (conditional: generate_explanation or END) -> END
     """
     builder = StateGraph(PhishingAnalysisState)
 
@@ -265,6 +316,10 @@ def build_investigation_graph(
     builder.add_node("analyze_urls", analyze_urls_node)
     builder.add_node("lookup_policy", lookup_policy_node)
     builder.add_node("aggregate_findings", aggregate_findings_node)
+    builder.add_node(
+        "generate_explanation",
+        create_generate_explanation_node(primary_llm=primary_llm, fallback_llm=fallback_llm),
+    )
 
     # 2. Register edges
     builder.add_edge(START, "validate_input")
@@ -282,7 +337,18 @@ def build_investigation_graph(
     builder.add_edge("retrieve_knowledge", "analyze_urls")
     builder.add_edge("analyze_urls", "lookup_policy")
     builder.add_edge("lookup_policy", "aggregate_findings")
-    builder.add_edge("aggregate_findings", END)
+
+    # Conditional edge: aggregate_findings skips explanation if tool_errors exist
+    builder.add_conditional_edges(
+        "aggregate_findings",
+        route_after_aggregation,
+        {
+            "generate_explanation": "generate_explanation",
+            END: END,
+        },
+    )
+
+    builder.add_edge("generate_explanation", END)
 
     return builder.compile()
 
@@ -290,9 +356,15 @@ def build_investigation_graph(
 def run_investigation(
     initial_state: PhishingAnalysisState,
     embedder: Embedder | None = None,
+    primary_llm: BaseChatModel | None = None,
+    fallback_llm: BaseChatModel | None = None,
 ) -> PhishingAnalysisState:
     """Execute the full compiled investigation workflow on the given initial state."""
-    graph = build_investigation_graph(embedder=embedder)
+    graph = build_investigation_graph(
+        embedder=embedder,
+        primary_llm=primary_llm,
+        fallback_llm=fallback_llm,
+    )
     result = graph.invoke(initial_state)
     return result
 

@@ -8,6 +8,8 @@ from src.agent.schemas import (
     KnowledgeSearchInput,
     KnowledgeSearchChunk,
     KnowledgeSearchResult,
+    SanitizedURLObservation,
+    InvestigationExplanation,
 )
 from src.agent.state import (
     PhishingAnalysisState,
@@ -23,6 +25,14 @@ from src.agent.tools import (
     search_security_knowledge,
     knowledge_base_search_tool,
 )
+from src.agent.llm import (
+    generate_investigation_explanation,
+    generate_deterministic_degraded_explanation,
+    get_primary_llm,
+    get_fallback_llm,
+    sanitize_url_observations,
+    build_minimized_investigation_prompt,
+)
 from src.agent.graph import (
     build_investigation_graph,
     run_investigation,
@@ -30,6 +40,7 @@ from src.agent.graph import (
     analyze_urls_node,
     lookup_policy_node,
     aggregate_findings_node,
+    create_generate_explanation_node,
 )
 
 __all__ = [
@@ -40,6 +51,8 @@ __all__ = [
     "KnowledgeSearchInput",
     "KnowledgeSearchChunk",
     "KnowledgeSearchResult",
+    "SanitizedURLObservation",
+    "InvestigationExplanation",
     "PhishingAnalysisState",
     "compute_deterministic_escalation",
     "create_initial_agent_state",
@@ -50,11 +63,18 @@ __all__ = [
     "policy_triage_lookup_tool",
     "search_security_knowledge",
     "knowledge_base_search_tool",
+    "generate_investigation_explanation",
+    "generate_deterministic_degraded_explanation",
+    "get_primary_llm",
+    "get_fallback_llm",
+    "sanitize_url_observations",
+    "build_minimized_investigation_prompt",
     "build_investigation_graph",
     "run_investigation",
     "validate_input_node",
     "analyze_urls_node",
     "lookup_policy_node",
     "aggregate_findings_node",
+    "create_generate_explanation_node",
 ]
 

@@ -108,6 +108,7 @@ def test_graph_full_execution_flow():
         assert "url_structure_analyzer" in tool_names
         assert "policy_lookup" in tool_names
         assert "aggregate_findings" in tool_names
+        assert "explanation_generator" in tool_names
         assert len(final_state["tool_errors"]) == 0
 
 
@@ -279,6 +280,11 @@ def test_graph_knowledge_base_error_handling():
 
 def test_graph_offline_guarantee_no_network_access(monkeypatch):
     """Verify graph executes completely offline with zero network or DNS calls."""
+    # Ensure offline mode by unsetting external API keys
+    from src.config import settings
+    monkeypatch.setattr(settings, "GOOGLE_API_KEY", None)
+    monkeypatch.setattr(settings, "GROQ_API_KEY", None)
+
     def guarded_connect(*args, **kwargs):
         pytest.fail("Network access attempted during LangGraph investigation execution!")
 
@@ -335,4 +341,56 @@ def test_graph_no_raw_email_in_tool_outputs():
     for entry in final_state["tool_outputs"]:
         entry_str = str(entry)
         assert secret_body not in entry_str
+
+
+def test_graph_with_injected_primary_llm():
+    """Verify graph uses injected mock LLM and populates structured explanation without altering scores."""
+    from unittest.mock import MagicMock
+    from src.agent.schemas import InvestigationExplanation
+
+    mock_llm = MagicMock()
+    mock_struct = MagicMock()
+    mock_explanation = InvestigationExplanation(
+        summary="Phishing attempt detected with credential harvesting signals.",
+        key_findings=["Insecure link to IP address"],
+        risk_explanation="Risk score 75.0 warrants automated quarantine.",
+        recommended_actions=["Quarantine message"],
+        limitations=["Offline analysis only"],
+        evidence_references=["chunk-1"],
+        provider_used="google",
+        generation_status="completed",
+    )
+    mock_struct.invoke.return_value = mock_explanation
+    mock_llm.with_structured_output.return_value = mock_struct
+
+    state = create_initial_agent_state(
+        request_id="req-injected-llm",
+        email_text="Please sign in at http://192.168.1.10/login",
+        ml_probability=0.8,
+        nlp_probability=0.7,
+        risk_score=75.0,
+        classification="High",
+    )
+
+    with patch("src.agent.graph.search_security_knowledge") as mock_search:
+        from src.agent.schemas import KnowledgeSearchResult
+        mock_search.return_value = KnowledgeSearchResult(
+            query="test",
+            status="empty",
+            results_count=0,
+            chunks=[],
+        )
+        final_state = run_investigation(state, primary_llm=mock_llm)
+
+    assert final_state["explanation"] == mock_explanation.summary
+    assert final_state["recommendations"] == ["Quarantine message"]
+    assert final_state["structured_explanation"]["provider_used"] == "google"
+    assert final_state["structured_explanation"]["generation_status"] == "completed"
+
+    # Precomputed scores must remain 100% identical
+    assert final_state["risk_score"] == 75.0
+    assert final_state["classification"] == "High"
+    assert final_state["ml_probability"] == 0.8
+    assert final_state["nlp_probability"] == 0.7
+    assert final_state["requires_escalation"] is True
 

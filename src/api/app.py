@@ -143,6 +143,14 @@ def create_app() -> FastAPI:
     )
     
     # Add Middleware
+    from fastapi.middleware.cors import CORSMiddleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     app.add_middleware(RequestIDAndLoggingMiddleware)
 
     # Register Exception Handlers

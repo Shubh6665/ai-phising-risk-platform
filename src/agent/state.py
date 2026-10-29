@@ -76,13 +76,13 @@ def compute_deterministic_escalation(
     if risk_score >= 80.0:
         reasons.append(
             f"Critical risk tier (score {risk_score:.1f} >= 80.0); "
-            "mandates immediate perimeter containment, mailbox purge, and high-priority SOC alert."
+            "recommends immediate perimeter containment, mailbox purge, and high-priority SOC alert under incident guidance."
         )
     # Rule 2: High risk triage band requires secondary SOC analyst review
     elif 60.0 <= risk_score < 80.0:
         reasons.append(
             f"High-uncertainty triage tier (score {risk_score:.1f} in 60.0–79.9); "
-            "automated quarantine mandates secondary SOC analyst review."
+            "automated quarantine triage recommends secondary SOC analyst review."
         )
 
     # Rule 3: Significant model divergence indicating conflicting statistical signals

@@ -184,7 +184,7 @@ def generate_deterministic_degraded_explanation(
     risk_explanation = (
         f"The message was categorized as {classification} risk based on statistical feature analysis "
         f"and transformer semantic classification. Triage guidance aligns with {policy.get('source_attribution', 'project standards')}. "
-        f"Handling procedure mandates: {policy.get('technical_handling', triage_action)}"
+        f"Recommended handling procedure: {policy.get('technical_handling', triage_action)}"
     )
 
     return InvestigationExplanation(

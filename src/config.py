@@ -45,6 +45,14 @@ class Settings(BaseSettings):
     RAG_EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
     RAG_TOP_K: int = 3
     RAG_ENABLED: bool = True
+
+    # CORS Configuration (Phase 9)
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
     
     model_config = SettingsConfigDict(
         env_file=".env",

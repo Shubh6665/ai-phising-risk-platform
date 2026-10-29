@@ -1,8 +1,10 @@
-"""Tests for Phase 7 Sub-step A: Security Knowledge Base curation and formatting."""
+"""Tests for Phase 7 Knowledge Base curation, source attribution, and triage alignment."""
 
 import re
 from pathlib import Path
 import pytest
+
+from src.rag.chunker import MarkdownChunker
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 KB_DIR = PROJECT_ROOT / "data/knowledge_base"
@@ -34,12 +36,13 @@ def test_documents_are_valid_utf8_and_non_empty(doc_name):
 
 
 def test_authoritative_documents_source_attribution():
-    """Verify that authoritative documents reference real public security bodies."""
+    """Verify that all knowledge base documents reference real public security standards."""
     phishing_doc = (KB_DIR / "phishing_indicators.md").read_text(encoding="utf-8")
     assert "NIST" in phishing_doc
     assert "CISA" in phishing_doc
     assert "APWG" in phishing_doc
-    assert "https://www.cisa.gov" in phishing_doc or "https://csrc.nist.gov" in phishing_doc
+    assert "https://www.cisa.gov" in phishing_doc
+    assert "https://csrc.nist.gov" in phishing_doc
 
     attack_doc = (KB_DIR / "attack_patterns.md").read_text(encoding="utf-8")
     assert "MITRE ATT&CK" in attack_doc
@@ -47,17 +50,42 @@ def test_authoritative_documents_source_attribution():
     assert "T1566" in attack_doc
     assert "https://attack.mitre.org" in attack_doc
 
+    policy_doc = (KB_DIR / "security_policies.md").read_text(encoding="utf-8")
+    assert "CISA" in policy_doc
+    assert "NIST" in policy_doc
+    assert "SP 800-61" in policy_doc or "SP 800-177" in policy_doc
+    assert "https://www.cisa.gov" in policy_doc or "https://csrc.nist.gov" in policy_doc
 
-def test_mock_documents_are_explicitly_labeled_fictional():
-    """Verify mock policies and incident response playbooks are clearly declared fictional."""
-    for mock_doc in ["security_policies.md", "incident_response.md"]:
-        content = (KB_DIR / mock_doc).read_text(encoding="utf-8")
-        assert (
-            "MOCK" in content or "fictional" in content.lower()
-        ), f"{mock_doc} missing explicit fictional disclaimer"
-        assert (
-            "demonstration" in content.lower() or "project" in content.lower()
-        ), f"{mock_doc} should indicate it was created for demonstration/project"
+    ir_doc = (KB_DIR / "incident_response.md").read_text(encoding="utf-8")
+    assert "NIST" in ir_doc
+    assert "SP 800-61 Rev. 3" in ir_doc
+    assert "CISA" in ir_doc
+    assert "https://csrc.nist.gov/pubs/sp/800/61/r3/final" in ir_doc
+
+
+def test_guidance_distinguishes_project_triage_from_approved_organizational_policy():
+    """Verify triage and IR documents clarify they are reference guidance, not approved policies."""
+    policies_doc = (KB_DIR / "security_policies.md").read_text(encoding="utf-8")
+    assert "NOT AN ORGANIZATION-APPROVED SECURITY POLICY" in policies_doc
+    assert "ensemble" in policies_doc.lower() or "src/models/ensemble.py" in policies_doc
+    assert "not standards" in policies_doc.lower() or "not thresholds mandated" in policies_doc.lower()
+
+    ir_doc = (KB_DIR / "incident_response.md").read_text(encoding="utf-8")
+    assert "NOT AN ORGANIZATION-APPROVED INCIDENT RESPONSE PLAN" in ir_doc
+    assert "executive leadership" in ir_doc.lower() or "legal counsel" in ir_doc.lower()
+
+
+def test_knowledge_base_documents_have_correct_mock_status():
+    """Ensure source-backed reference guidance is not falsely tagged as mock."""
+    chunker = MarkdownChunker()
+    for doc_name in REQUIRED_DOCUMENTS:
+        doc_path = KB_DIR / doc_name
+        chunks = chunker.chunk_document(doc_path)
+        assert len(chunks) > 0, f"No chunks generated for {doc_name}"
+        for chunk in chunks:
+            assert chunk.metadata["is_mock"] is False, f"{doc_name} should not be marked as mock"
+            assert chunk.metadata["document_type"] == "authoritative"
+            assert "Fictional Project Policy" not in chunk.metadata["source_attribution"]
 
 
 def test_no_secrets_or_private_credentials_in_knowledge_base():
@@ -86,7 +114,7 @@ def test_document_structure_has_markdown_headings():
 
 
 def test_policy_thresholds_match_ensemble_classification():
-    """Ensure mock policies and incident response SLAs align with Phase 5 ensemble thresholds."""
+    """Ensure guidance tiers align with Phase 5 ensemble thresholds."""
     policies_doc = (KB_DIR / "security_policies.md").read_text(encoding="utf-8")
     assert "0.0 – 39.9" in policies_doc
     assert "40.0 – 59.9" in policies_doc

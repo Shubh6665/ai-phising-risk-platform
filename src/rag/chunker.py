@@ -169,7 +169,18 @@ class MarkdownChunker:
     def _extract_document_metadata(self, path: Path, content: str) -> dict[str, Any]:
         """Derive standard metadata attributes from document path and header comments."""
         doc_name = path.name
-        is_mock = "security_policies" in doc_name or "incident_response" in doc_name or "MOCK" in content
+
+        # Detect genuinely mock material from explicit header declaration or mock filename
+        has_mock_header = bool(
+            re.search(r">\s*(?:\*{2})?Document Type(?:\*{2})?:\s*Mock", content, re.IGNORECASE)
+            or re.search(
+                r">\s*(?:\[!(?:IMPORTANT|WARNING|NOTE)\])?\s*\n?>\s*(?:\*{2})?MOCK\s+(?:DOCUMENT|POLICY|PLAYBOOK|INCIDENT|GUIDANCE)",
+                content,
+                re.IGNORECASE,
+            )
+        )
+        has_mock_filename = doc_name.lower().startswith("mock_") or "_mock." in doc_name.lower()
+        is_mock = has_mock_header or has_mock_filename
 
         # Extract title from first H1
         title_match = re.search(r"^#\s+(.+)$", content, re.MULTILINE)

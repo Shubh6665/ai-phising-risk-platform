@@ -2,7 +2,8 @@
 
 > **Document Type**: Authoritative Technical Guidance  
 > **Target Audience**: Security Analysts, Detection Engineers, Automated Triage Engines  
-> **Sources**: MITRE ATT&CK Framework, Open Worldwide Application Security Project (OWASP)
+> **Sources**: MITRE ATT&CK Framework, Open Worldwide Application Security Project (OWASP)  
+> **Source Verification Date**: 2026-10-29
 
 ---
 
@@ -13,6 +14,7 @@ Phishing operations span broad, indiscriminate bulk campaigns to highly sophisti
 Authoritative references:
 - **MITRE ATT&CK Enterprise Matrix**: [Phishing (T1566)](https://attack.mitre.org/techniques/T1566/)
 - **MITRE ATT&CK Enterprise Matrix**: [Phishing for Information (T1598)](https://attack.mitre.org/techniques/T1598/)
+- **MITRE ATT&CK Enterprise Matrix**: [Internal Spearphishing (T1534)](https://attack.mitre.org/techniques/T1534/)
 - **OWASP**: [Phishing Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Phishing_Prevention_Cheat_Sheet.html)
 - **OWASP**: [Automated Threats Handbook (OAT-019 / Account Takeover)](https://owasp.org/www-project-automated-threats-to-web-applications/)
 
@@ -25,6 +27,7 @@ Adversaries send messages to gain execution access on target victim endpoints:
 - **T1566.001: Spearphishing Attachment**: Delivering malicious files directly as email attachments (e.g., weaponized PDFs, macro documents, ISO/VHD images, or script loaders) that execute exploit code or droppers when opened.
 - **T1566.002: Spearphishing Link**: Directing targets to click hyperlinks leading to malicious landing pages, drive-by downloads, or credential harvesting portals hosted on external attacker infrastructure.
 - **T1566.003: Spearphishing via Service**: Transmitting malicious lures through third-party enterprise services, cloud communication tools, collaboration platforms, or social media rather than direct SMTP.
+- **T1566.004: Spearphishing Voice (Vishing)**: Directing targets to phone numbers or placing voice calls to manipulate users into divulging MFA credentials, passwords, or installing remote administration tools.
 
 ### T1598: Phishing for Information
 Adversaries send deceptive communications specifically engineered to elicit sensitive credentials, corporate intelligence, or infrastructure details without dropping executable code:
@@ -67,11 +70,12 @@ Adversaries who have already compromised an internal account use that trusted in
 
 ## 4. Authoritative Source Traceability Matrix
 
-| Attack Pattern | Framework / ID | Primary Defense & Detection Strategy |
-|---|---|---|
-| **Spearphishing Attachment** | MITRE ATT&CK T1566.001 | Attachment sandboxing, blocking dangerous file extensions, macro execution restrictions. |
-| **Spearphishing Link** | MITRE ATT&CK T1566.002 | Click-time URL analysis, domain age inspection, brand homoglyph detection. |
-| **Internal Spearphishing** | MITRE ATT&CK T1534 | Internal email scanning, anomaly detection on unusual internal sender behavior. |
-| **Credential Harvesting** | MITRE ATT&CK T1056.003 / OWASP A07 | FIDO2 / WebAuthn phishing-resistant MFA, conditional access policies based on device health. |
-| **Account Takeover via Phish** | OWASP OAT-019 | Anomaly-based sign-in monitoring, session token invalidation, step-up authentication. |
-| **OAuth Abuse** | MITRE ATT&CK T1528 / T1566 | User consent restrictions, administrator approval workflows for third-party enterprise apps. |
+| Attack Pattern | Framework / ID | Verified Canonical URL | Primary Defense & Detection Strategy |
+|---|---|---|---|
+| **Spearphishing Attachment** | MITRE ATT&CK T1566.001 | [MITRE T1566.001](https://attack.mitre.org/techniques/T1566/001/) | Attachment sandboxing, blocking dangerous file extensions, macro execution restrictions. |
+| **Spearphishing Link** | MITRE ATT&CK T1566.002 | [MITRE T1566.002](https://attack.mitre.org/techniques/T1566/002/) | Click-time URL analysis, domain age inspection, brand homoglyph detection. |
+| **Spearphishing Voice (Vishing)** | MITRE ATT&CK T1566.004 | [MITRE T1566.004](https://attack.mitre.org/techniques/T1566/004/) | Out-of-band identity verification, security awareness training against phone lures. |
+| **Internal Spearphishing** | MITRE ATT&CK T1534 | [MITRE T1534](https://attack.mitre.org/techniques/T1534/) | Internal email scanning, anomaly detection on unusual internal sender behavior. |
+| **Credential Harvesting** | MITRE ATT&CK T1056.003 / OWASP A07 | [MITRE T1056.003](https://attack.mitre.org/techniques/T1056/003/) | FIDO2 / WebAuthn phishing-resistant MFA, conditional access policies based on device health. |
+| **Account Takeover via Phish** | OWASP OAT-019 | [OWASP OAT-019](https://owasp.org/www-project-automated-threats-to-web-applications/) | Anomaly-based sign-in monitoring, session token invalidation, step-up authentication. |
+| **OAuth Abuse** | MITRE ATT&CK T1528 / T1566 | [MITRE T1528](https://attack.mitre.org/techniques/T1528/) | User consent restrictions, administrator approval workflows for third-party enterprise apps. |

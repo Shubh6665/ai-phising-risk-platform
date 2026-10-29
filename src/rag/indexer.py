@@ -55,6 +55,13 @@ def index_knowledge_base(
 
     collection = get_or_create_collection(persist_dir, collection_name)
 
+    # Prune existing chunks for these documents to remove stale chunks from previous revisions
+    for file_path in md_files:
+        try:
+            collection.delete(where={"document_name": file_path.name})
+        except Exception:
+            pass
+
     all_chunks: list[DocumentChunk] = []
     for file_path in md_files:
         chunks = chunker.chunk_document(file_path)

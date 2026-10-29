@@ -1,77 +1,121 @@
-# Internal Security Policies and Triage Standards
+# Project Triage Guidance and Recommended Security Controls
 
-> [!IMPORTANT]
-> **MOCK POLICY DOCUMENT — CREATED FOR PROJECT DEMONSTRATION ONLY**  
-> This document defines fictional, internal operational security policies created specifically for the **AI Phishing Risk & Security Triage Platform**. It does not represent the real-world policies of any commercial enterprise or standards organization.
+> [!NOTE]
+> **PROJECT TRIAGE GUIDANCE — NOT AN ORGANIZATION-APPROVED SECURITY POLICY**  
+> This document specifies application-level triage score boundaries, automated routing actions, and recommended baseline security controls for the **AI Phishing Risk & Security Triage Platform**.
+> 
+> The numerical risk score thresholds (0.0–100.0) and tier classifications (Low, Medium, High, Critical) are technical design choices of this project's ensemble architecture (`src/models/ensemble.py`). They are not standards or thresholds mandated by NIST, CISA, or MITRE.
+> 
+> This guidance does not constitute an officially approved organizational cybersecurity policy. Any deploying organization must formally author, approve, and maintain its own policies, acceptable use standards, and escalation authorities under the governance of organizational leadership and legal counsel.
+> 
+> **Document Type**: Authoritative Reference Guidance  
+> **Target Audience**: Security Analysts, Triage Engineers, Automated Response Systems  
+> **Sources**: CISA (Phishing Guidance, Secure Our World), NIST (SP 800-177 Rev. 1, SP 800-61 Rev. 3), MITRE ATT&CK (T1566)  
+> **Source Verification Date**: 2026-10-29
 
 ---
 
-## 1. Purpose and Scope
+## 1. Scope and Architectural Context
 
-This document specifies the operational triage thresholds, containment triggers, and enforcement actions mandated by the internal security policy. These policies provide the ground truth rules referenced by the security triage engine and retrieval-augmented generation (RAG) assistant during automated email assessment.
+### Differentiating Application Triage from Enterprise Security Policy
+In enterprise cybersecurity operations, there is an essential distinction between automated software triage and governance policy:
+
+1. **Application Triage Engine**:
+   - The algorithmic pipeline implemented by this platform accepts an incoming email message, extracts structural and lexical features, computes predictive probabilities from statistical machine learning (Random Forest) and deep learning (fine-tuned DistilBERT) models, and evaluates deterministic rule signals.
+   - The engine maps these inputs to an application-level composite risk score from 0.0 to 100.0. This score provides a prioritization index for downstream filtering and analysis.
+
+2. **Organizational Security Policy**:
+   - As emphasized in NIST SP 800-61 Rev. 3 (*Govern* function GV-1 and GV-2) and CISA's *Incident Response Plan Basics*, organizational policies are legally binding governance documents. They establish mandatory security baselines, assign operational roles, mandate incident escalation authorities, and specify regulatory compliance requirements.
+   - An automated tool can inform triage decisions, but it cannot unilaterally dictate organizational policy without executive approval.
+
+Deploying organizations should evaluate this project's triage guidance as a reference starting point when drafting their own formal email security policies and operational thresholds.
 
 ---
 
-## 2. Policy POL-SEC-101: Risk Score Tiers and Automated Actions
+## 2. Application Risk Scoring Tiers and Automated Actions
 
-The platform assigns every evaluated email an application risk score from 0.0 to 100.0, deterministically mapped to four action tiers:
+The platform combines statistical ML model probabilities, transformer NLP outputs, and heuristic rule signals into an application-level risk score from 0.0 to 100.0 (implemented in `src/models/ensemble.py`). The application categorizes scores into four operational triage tiers:
+
+```
+Score:  0.0 ────────────── 39.9 ────────────── 59.9 ────────────── 79.9 ────────────── 100.0
+Tier:   [     Low Risk        ] [    Medium Risk    ] [     High Risk     ] [   Critical Risk   ]
+Action: Standard Delivery       Warning Injected      Automated Quarantine  Immediate Block
+```
 
 ### Low Risk Tier (Score: 0.0 – 39.9)
-- **Classification**: `Low`
-- **Triage Action**: `Allow / Standard Delivery`
-- **Gateway Enforcement**: Deliver to recipient inbox without modification.
-- **User Notification**: Standard mailbox delivery; no defensive banners injected.
-- **Audit Requirement**: Record analysis transaction ID, request ID, model probabilities, and text hash in audit log. Retain record for 30 days.
+- **Application Classification**: `Low`
+- **Triage Action**: `Standard Delivery / Allow`
+- **Technical Handling**: Deliver message to recipient mailbox without modification or latency. Both statistical models and heuristic extractors indicate negligible phishing signals.
+- **Audit & Telemetry**: Record the analysis identifier (`analysis_id`), request ID, model probabilities, and text hash in audit storage for operational monitoring and model drift detection.
+- **Reference Grounding**: Consistent with CISA recommendations to maintain uninterrupted business communication when authentication checks pass and threat indicators are absent.
 
 ### Medium Risk Tier (Score: 40.0 – 59.9)
-- **Classification**: `Medium`
+- **Application Classification**: `Medium`
 - **Triage Action**: `Defensive Delivery / Warning Injected`
-- **Gateway Enforcement**: Deliver to recipient inbox with an external warning header and visual banner:
+- **Technical Handling**: Deliver message to recipient mailbox with an informational warning banner prepended to the message body:
   ```
-  [CAUTION: SUSPICIOUS SENDER / UNVERIFIED LINKS DETECTED]
-  This email contains unusual language patterns or external links. Verify the sender before clicking links or downloading attachments.
+  [CAUTION: EXTERNAL SENDER / SUSPICIOUS PATTERNS DETECTED]
+  This email originated outside the organization or contains unusual language patterns.
+  Verify the sender before opening attachments or following embedded links.
   ```
-- **Link Rewriting**: Enable click-time link protection. Disable direct link execution where technically feasible.
-- **User Guidance**: Present recipient with a "Report Phish" self-service option.
+- **Recommended User Controls**:
+  - Advise the recipient to independently verify the sender's identity through out-of-band communication before taking action.
+  - Provide a one-click "Report Phishing" self-service feature within the email client, as recommended by the CISA *Secure Our World* campaign.
+- **Link Rewriting**: Where supported by the email gateway, enable click-time protection to re-evaluate destination URLs dynamically upon user interaction.
 
 ### High Risk Tier (Score: 60.0 – 79.9)
-- **Classification**: `High`
-- **Triage Action**: `Quarantine / Security Analyst Review`
-- **Gateway Enforcement**: Divert message to the centralized Security Operations Center (SOC) quarantine queue. Block delivery to user inbox pending manual or secondary automated review.
-- **User Notification**: Send automated quarantine receipt to the intended recipient informing them that an incoming message from the sender was held for security verification.
-- **Analyst SLA**: Security analyst must review and disposition within 4 business hours.
+- **Application Classification**: `High`
+- **Triage Action**: `Automated Quarantine / Security Analyst Review`
+- **Technical Handling**: Divert message from the standard delivery stream into an administrative or SOC quarantine repository. The message remains inaccessible to the recipient pending secondary evaluation.
+- **User Notification**: Deliver an automated receipt notifying the recipient that an incoming message from the claimed sender is undergoing security inspection.
+- **Analyst Triage**: Prioritize the message in the security operations queue. The analyst inspects header provenance, sandboxes attachments, and validates extracted indicators of compromise (IOCs).
+- **Reference Grounding**: Aligns with CISA *Phishing Guidance* recommendations to prevent initial access by isolating high-probability threats at Phase One of the attack cycle.
 
 ### Critical Risk Tier (Score: 80.0 – 100.0)
-- **Classification**: `Critical`
-- **Triage Action**: `Immediate Block / Perimeter Containment / Automatic Escalation`
-- **Gateway Enforcement**: Immediate drop of message payload. Message is permanently quarantined and never delivered to the user inbox.
-- **Automated Defensive Response**:
-  1. Add sender domain and originating IP address to perimeter blocklists for 72 hours.
-  2. Search all corporate mailboxes for identical message hashes (`email_hash`) received within the last 48 hours and purge matching copies.
-  3. If user has active browser sessions referencing the detected URL, immediately invalidate active session tokens and force password reset.
-- **Analyst SLA**: High-priority alert dispatched to on-call SOC tier-2 responder. Initial containment verification required within 15 minutes.
+- **Application Classification**: `Critical`
+- **Triage Action**: `Immediate Block / Perimeter Containment / High-Priority Alert`
+- **Technical Handling**: Immediately drop the message payload. Suppress delivery across all organizational mailboxes.
+- **Automated Containment Recommendations**:
+  1. Extract sender domains, originating IP addresses, and embedded URLs to update edge perimeter blocklists.
+  2. Query mailbox logs using the normalized message body hash (`email_hash`) or subject to detect and neutralize identical messages received across the enterprise.
+  3. If user telemetry reveals outbound interaction with an embedded URL, trigger identity containment workflows (session termination and token revocation).
+- **Reference Grounding**: Mitigates active exploitation scenarios described in MITRE ATT&CK T1566 (Phishing) and CISA credential theft guidance.
 
 ---
 
-## 3. Policy POL-SEC-102: Financial Transactions and Out-of-Band Verification
+## 3. Recommended Technical Controls for High-Risk Email Vectors
 
-- **Rule**: Any email requesting fund transfers, wire transactions, modifications to supplier banking details, or executive gift-card purchases MUST undergo out-of-band verification prior to execution.
-- **Verification Requirement**: The recipient must independently verify the request via a known, pre-established phone number or in-person confirmation. Verifying via phone numbers, links, or contact details provided within the suspicious email body is strictly prohibited.
-- **Enforcement**: Emails matching financial payment keywords combined with external sender addresses must be automatically escalated to at least `High` risk tier regardless of classical ML scores.
+The following baseline controls are recommended for enterprise email deployments, supported by authoritative standards:
+
+### Out-of-Band Verification for Financial and Executive Requests
+- **Threat Vector**: Business Email Compromise (BEC) and executive impersonation (MITRE ATT&CK T1566).
+- **Core Principle**: Any inbound or internal communication requesting financial transactions, wire transfers, changes to vendor payment accounts, or payroll alterations must be verified independently prior to processing.
+- **Verification Rule**: Verification must use a pre-existing, trusted out-of-band communication channel (such as a known internal extension, in-person inquiry, or established phone number recorded in corporate vendor records).
+- **Crucial Warning**: Never use phone numbers, email addresses, or web links provided within the suspicious message itself, as threat actors routinely furnish fraudulent contact details (CISA *Secure Our World* guidance).
+
+### Phishing-Resistant Multi-Factor Authentication (MFA)
+- **Threat Vector**: Credential harvesting and Adversary-in-the-Middle (AiTM) reverse-proxies (MITRE ATT&CK T1566.002, T1598; OWASP A07:2021).
+- **Vulnerability of Legacy MFA**: Standard passwords, SMS-based one-time codes, and legacy mobile push notifications are vulnerable to interception and replay by modern reverse-proxy phishing kits (e.g., Evilginx).
+- **Recommended Baseline**: CISA, the NSA, the FBI, and NIST strongly recommend transitioning enterprise identity systems to **phishing-resistant MFA**, specifically FIDO2/WebAuthn hardware security keys or PKI-based smart cards. Phishing-resistant authenticators cryptographically bind authentication tokens to the authentic browser origin, rendering harvested credentials useless on attacker domains.
+
+### Email Domain Authentication and DMARC Enforcement
+- **Threat Vector**: Domain spoofing and unauthorized sender impersonation.
+- **Technical Recommendation**: Deploy and enforce the three foundational email authentication protocols as specified by NIST SP 800-177 Rev. 1 (Section 4):
+  1. **SPF (Sender Policy Framework)**: Publish authoritative IP records for outbound mail servers.
+  2. **DKIM (DomainKeys Identified Mail)**: Cryptographically sign outbound message headers.
+  3. **DMARC (Domain-based Message Authentication, Reporting, and Conformance)**: Mandate alignment between RFC 5322 `From` headers and SPF/DKIM verification. Configure the organizational DMARC policy progressively toward `p=reject` to block unauthorized spoofed messages at the perimeter.
 
 ---
 
-## 4. Policy POL-SEC-103: Credential and Authentication Requests
+## 4. Authoritative Source Traceability and Verification Matrix
 
-- **Rule**: Internal IT support, system administrators, and executive leadership will NEVER request user passwords, MFA codes, or recovery seed phrases via email.
-- **Password Reset Standard**: Legitimate password reset notifications never contain direct password entry fields inside an email body, nor do they link to raw IP addresses or non-corporate root domains.
-- **Enforcement**: Any inbound email soliciting password submission or containing forms requesting authentication secrets must be classified as an intentional credential harvesting lure and assigned to the `Critical` risk tier.
+The recommendations in this document are grounded in the following official publications:
 
----
-
-## 5. Policy POL-SEC-104: External Sender and DMARC Alignment Rules
-
-- **External Sender Tagging**: All messages received from outside the organization must carry an `[EXTERNAL]` tag prepended to the email subject.
-- **DMARC Enforcement**:
-  - Inbound messages failing DMARC verification where the sender domain claims to be an internal corporate domain (`from: @our-company.com`) must be rejected or quarantined at the perimeter gateway.
-  - Emails exhibiting display name spoofing (internal employee name paired with external free email address) must be flagged with `urgency_language` or `suspicious_sender` signals.
+| Source Title | Issuing Body | Publication Date | Verified Canonical URL | Verification Date |
+|---|---|---|---|---|
+| **Phishing Guidance: Stopping the Attack Cycle at Phase One** | CISA / NSA / FBI / MS-ISAC | October 18, 2023 (PDF refreshed March 2025) | [CISA Phishing Guidance](https://www.cisa.gov/resources-tools/resources/phishing-guidance-stopping-attack-cycle-phase-one) | 2026-10-29 |
+| **NIST SP 800-61 Rev. 3: Incident Response Recommendations** | NIST | April 3, 2025 (Final) | [NIST CSRC SP 800-61 Rev. 3](https://csrc.nist.gov/pubs/sp/800/61/r3/final) | 2026-10-29 |
+| **NIST SP 800-177 Rev. 1: Trustworthy Email** | NIST | February 2019 | [NIST CSRC SP 800-177 Rev. 1](https://csrc.nist.gov/pubs/sp/800/177/r1/final) | 2026-10-29 |
+| **Secure Our World: Phishing Tip Sheet** | CISA | September 2024 | [CISA Phishing Tip Sheet (PDF)](https://www.cisa.gov/sites/default/files/2024-09/Secure-Our-World-Phishing-Tip-Sheet.pdf) | 2026-10-29 |
+| **Incident Response Plan Basics** | CISA | February 1, 2024 | [CISA IRP Basics (PDF)](https://www.cisa.gov/sites/default/files/2024-02/Incident-Response-Plan-Basics_508c_1Feb2024.pdf) | 2026-10-29 |
+| **MITRE ATT&CK: Phishing (T1566)** | MITRE Corporation | v15 (Current) | [MITRE ATT&CK T1566](https://attack.mitre.org/techniques/T1566/) | 2026-10-29 |

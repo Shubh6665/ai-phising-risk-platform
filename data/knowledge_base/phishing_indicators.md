@@ -2,7 +2,8 @@
 
 > **Document Type**: Authoritative Technical Guidance  
 > **Target Audience**: Security Analysts, Automated Triage Engines, Risk Aggregation Systems  
-> **Sources**: National Institute of Standards and Technology (NIST), Cybersecurity and Infrastructure Security Agency (CISA), Anti-Phishing Working Group (APWG)
+> **Sources**: National Institute of Standards and Technology (NIST), Cybersecurity and Infrastructure Security Agency (CISA), Anti-Phishing Working Group (APWG)  
+> **Source Verification Date**: 2026-10-29
 
 ---
 
@@ -11,9 +12,11 @@
 Phishing is a form of social engineering where an attacker impersonates a trustworthy entity to deceive recipients into revealing sensitive credentials, executing malicious attachments, transferring funds, or granting unauthorized system access. Detection relies on evaluating indicators across multiple dimensions: sender identity, textual language, embedded hyperlinks, attachment characteristics, and message formatting.
 
 Authoritative references:
-- **CISA**: [Recognizing and Reporting Phishing](https://www.cisa.gov/secure-our-world/recognize-and-report-phishing)
-- **NIST**: [NIST SP 800-177 Rev. 1: Trustworthy Email](https://csrc.nist.gov/publications/detail/sp/800-177/rev-1/final)
-- **APWG**: [Phishing Activity Trends Reports](https://apwg.org/trendsreports/)
+- **CISA**: [Phishing Guidance: Stopping the Attack Cycle at Phase One](https://www.cisa.gov/resources-tools/resources/phishing-guidance-stopping-attack-cycle-phase-one) (Joint Guidance: CISA, NSA, FBI, MS-ISAC; October 2023, refreshed March 2025)
+- **CISA**: [Secure Our World: Phishing Tip Sheet](https://www.cisa.gov/sites/default/files/2024-09/Secure-Our-World-Phishing-Tip-Sheet.pdf) (September 2024)
+- **NIST**: [NIST SP 800-177 Rev. 1: Trustworthy Email](https://csrc.nist.gov/pubs/sp/800/177/r1/final) (February 2019)
+- **NIST**: [NIST SP 800-61 Rev. 3: Incident Response Recommendations](https://csrc.nist.gov/pubs/sp/800/61/r3/final) (April 3, 2025)
+- **APWG**: [Phishing Activity Trends Reports](https://apwg.org/trendsreports/) (Continuous telemetry)
 
 ---
 
@@ -94,10 +97,10 @@ Email attachments frequently deliver malware or harvest credentials via indirect
 
 ## 6. Authoritative Source Traceability Matrix
 
-| Indicator Category | Authoritative Reference | Official Recommendation / Finding |
-|---|---|---|
-| **Email Authentication** | NIST SP 800-177 Rev. 1, Sec 4 | Mandate SPF, DKIM, and DMARC with strict reject/quarantine alignment. |
-| **Urgency & Social Cues** | CISA / Social Engineering Guidance | Treat unprompted urgency, fear, and deadline pressure as primary indicators. |
-| **Typosquatting / Domains** | APWG Phishing Trends | Monitored exponential increases in look-alike domains and free TLS certificates. |
-| **Hyperlink Deception** | CISA Technical Tip ST04-014 | Never click unverified embedded links; inspect target URL domain suffixes. |
-| **Malicious Attachments** | NIST SP 800-61 Rev. 2, Sec 3.2 | Block unapproved executable, script, and macro-enabled attachments at the boundary. |
+| Indicator Category | Authoritative Reference | Publication Date | Verified Canonical URL | Official Recommendation / Finding |
+|---|---|---|---|---|
+| **Email Authentication** | NIST SP 800-177 Rev. 1, Sec 4 | February 2019 | [NIST SP 800-177 Rev. 1](https://csrc.nist.gov/pubs/sp/800/177/r1/final) | Mandate SPF, DKIM, and DMARC with strict reject/quarantine alignment. |
+| **Urgency & Social Cues** | CISA / Secure Our World | September 2024 | [CISA Tip Sheet (PDF)](https://www.cisa.gov/sites/default/files/2024-09/Secure-Our-World-Phishing-Tip-Sheet.pdf) | Treat unprompted urgency, fear, and deadline pressure as primary indicators. |
+| **Typosquatting / Domains** | APWG Phishing Trends | Quarterly Telemetry | [APWG Trends Reports](https://apwg.org/trendsreports/) | Monitored exponential increases in look-alike domains and free TLS certificates. |
+| **Hyperlink Deception** | CISA Phishing Guidance | October 2023 / March 2025 | [CISA Phishing Guidance](https://www.cisa.gov/resources-tools/resources/phishing-guidance-stopping-attack-cycle-phase-one) | Inspect underlying link targets; deploy click-time URL filtering and link rewriting. |
+| **Malicious Attachments** | NIST SP 800-61 Rev. 3 / CISA | April 2025 | [NIST SP 800-61 Rev. 3](https://csrc.nist.gov/pubs/sp/800/61/r3/final) | Block unapproved executable, script, and macro-enabled attachments at the boundary. |

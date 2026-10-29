@@ -61,8 +61,8 @@ def test_deterministic_chunking_and_stable_ids(tmp_path):
 
 
 def test_mock_document_type_detection(chunker, tmp_path):
-    mock_path = tmp_path / "security_policies.md"
-    content = "# Internal Policies\n\n> [!IMPORTANT]\n> MOCK POLICY DOCUMENT\n\n## POL-101\n\nPolicy text."
+    mock_path = tmp_path / "mock_policies.md"
+    content = "# Internal Policies\n\n> [!IMPORTANT]\n> **MOCK POLICY DOCUMENT**\n\n## POL-101\n\nPolicy text."
     mock_path.write_text(content, encoding="utf-8")
 
     chunks = chunker.chunk_document(mock_path)
@@ -70,6 +70,26 @@ def test_mock_document_type_detection(chunker, tmp_path):
     for chunk in chunks:
         assert chunk.metadata["is_mock"] is True
         assert chunk.metadata["document_type"] == "mock"
+
+
+def test_source_backed_guidance_with_policy_disclaimer_is_not_mock(chunker, tmp_path):
+    doc_path = tmp_path / "security_policies.md"
+    content = (
+        "# Project Triage Guidance\n\n"
+        "> [!NOTE]\n"
+        "> **PROJECT TRIAGE GUIDANCE — NOT AN ORGANIZATION-APPROVED SECURITY POLICY**\n\n"
+        "> **Sources**: CISA, NIST\n\n"
+        "## 1. Scope\n\n"
+        "This is source-backed technical guidance for email triage."
+    )
+    doc_path.write_text(content, encoding="utf-8")
+
+    chunks = chunker.chunk_document(doc_path)
+    assert len(chunks) >= 1
+    for chunk in chunks:
+        assert chunk.metadata["is_mock"] is False
+        assert chunk.metadata["document_type"] == "authoritative"
+        assert "CISA, NIST" in chunk.metadata["source_attribution"]
 
 
 def test_long_document_splitting_with_overlap(tmp_path):

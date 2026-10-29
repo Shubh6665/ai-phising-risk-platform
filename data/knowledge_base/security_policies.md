@@ -8,7 +8,7 @@
 > 
 > This guidance does not constitute an officially approved organizational cybersecurity policy. Any deploying organization must formally author, approve, and maintain its own policies, acceptable use standards, and escalation authorities under the governance of organizational leadership and legal counsel.
 > 
-> **Document Type**: Authoritative Reference Guidance  
+> **Document Type**: Source-Backed Reference Guidance  
 > **Target Audience**: Security Analysts, Triage Engineers, Automated Response Systems  
 > **Sources**: CISA (Phishing Guidance, Secure Our World), NIST (SP 800-177 Rev. 1, SP 800-61 Rev. 3), MITRE ATT&CK (T1566)  
 > **Source Verification Date**: 2026-10-29
@@ -118,4 +118,4 @@ The recommendations in this document are grounded in the following official publ
 | **NIST SP 800-177 Rev. 1: Trustworthy Email** | NIST | February 2019 | [NIST CSRC SP 800-177 Rev. 1](https://csrc.nist.gov/pubs/sp/800/177/r1/final) | 2026-10-29 |
 | **Secure Our World: Phishing Tip Sheet** | CISA | September 2024 | [CISA Phishing Tip Sheet (PDF)](https://www.cisa.gov/sites/default/files/2024-09/Secure-Our-World-Phishing-Tip-Sheet.pdf) | 2026-10-29 |
 | **Incident Response Plan Basics** | CISA | February 1, 2024 | [CISA IRP Basics (PDF)](https://www.cisa.gov/sites/default/files/2024-02/Incident-Response-Plan-Basics_508c_1Feb2024.pdf) | 2026-10-29 |
-| **MITRE ATT&CK: Phishing (T1566)** | MITRE Corporation | v15 (Current) | [MITRE ATT&CK T1566](https://attack.mitre.org/techniques/T1566/) | 2026-10-29 |
+| **MITRE ATT&CK: Phishing (T1566)** | MITRE Corporation | Framework v20.0 (October 13, 2026; Technique T1566) | [MITRE ATT&CK T1566](https://attack.mitre.org/techniques/T1566/) | 2026-10-29 |

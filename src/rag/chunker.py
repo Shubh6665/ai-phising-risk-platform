@@ -195,7 +195,7 @@ class MarkdownChunker:
         else:
             source_attribution = "Authoritative Security Standard"
 
-        document_type = "mock" if is_mock else "authoritative"
+        document_type = "mock" if is_mock else "source_backed_guidance"
 
         return {
             "source_path": str(path),

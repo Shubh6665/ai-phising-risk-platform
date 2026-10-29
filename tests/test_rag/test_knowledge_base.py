@@ -48,6 +48,7 @@ def test_authoritative_documents_source_attribution():
     assert "MITRE ATT&CK" in attack_doc
     assert "OWASP" in attack_doc
     assert "T1566" in attack_doc
+    assert "v20" in attack_doc
     assert "https://attack.mitre.org" in attack_doc
 
     policy_doc = (KB_DIR / "security_policies.md").read_text(encoding="utf-8")
@@ -84,7 +85,7 @@ def test_knowledge_base_documents_have_correct_mock_status():
         assert len(chunks) > 0, f"No chunks generated for {doc_name}"
         for chunk in chunks:
             assert chunk.metadata["is_mock"] is False, f"{doc_name} should not be marked as mock"
-            assert chunk.metadata["document_type"] == "authoritative"
+            assert chunk.metadata["document_type"] == "source_backed_guidance"
             assert "Fictional Project Policy" not in chunk.metadata["source_attribution"]
 
 

@@ -1,6 +1,6 @@
 # Phishing Indicators and Social Engineering Patterns
 
-> **Document Type**: Authoritative Technical Guidance  
+> **Document Type**: Source-Backed Technical Guidance  
 > **Target Audience**: Security Analysts, Automated Triage Engines, Risk Aggregation Systems  
 > **Sources**: National Institute of Standards and Technology (NIST), Cybersecurity and Infrastructure Security Agency (CISA), Anti-Phishing Working Group (APWG)  
 > **Source Verification Date**: 2026-10-29

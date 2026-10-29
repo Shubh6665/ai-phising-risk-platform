@@ -30,7 +30,7 @@ def test_chunk_short_document(chunker, tmp_path):
     assert "short single paragraph" in chunk.content
     assert chunk.metadata["document_name"] == "short_guidance.md"
     assert chunk.metadata["document_title"] == "Short Title"
-    assert chunk.metadata["document_type"] == "authoritative"
+    assert chunk.metadata["document_type"] == "source_backed_guidance"
     assert not chunk.metadata["is_mock"]
     assert chunk.metadata["chunk_index"] == 0
 
@@ -88,7 +88,7 @@ def test_source_backed_guidance_with_policy_disclaimer_is_not_mock(chunker, tmp_
     assert len(chunks) >= 1
     for chunk in chunks:
         assert chunk.metadata["is_mock"] is False
-        assert chunk.metadata["document_type"] == "authoritative"
+        assert chunk.metadata["document_type"] == "source_backed_guidance"
         assert "CISA, NIST" in chunk.metadata["source_attribution"]
 
 

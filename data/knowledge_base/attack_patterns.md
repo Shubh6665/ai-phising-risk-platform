@@ -1,8 +1,8 @@
 # Attack Patterns and Threat Actor Tactics
 
-> **Document Type**: Authoritative Technical Guidance  
+> **Document Type**: Source-Backed Technical Guidance  
 > **Target Audience**: Security Analysts, Detection Engineers, Automated Triage Engines  
-> **Sources**: MITRE ATT&CK Framework, Open Worldwide Application Security Project (OWASP)  
+> **Sources**: MITRE ATT&CK Framework (v20.0, released October 13, 2026), Open Worldwide Application Security Project (OWASP)  
 > **Source Verification Date**: 2026-10-29
 
 ---
@@ -12,11 +12,15 @@
 Phishing operations span broad, indiscriminate bulk campaigns to highly sophisticated, targeted spear-phishing operations. Threat actors employ deceptive lures to establish initial access, harvest credentials, conduct espionage, or execute financial fraud.
 
 Authoritative references:
-- **MITRE ATT&CK Enterprise Matrix**: [Phishing (T1566)](https://attack.mitre.org/techniques/T1566/)
-- **MITRE ATT&CK Enterprise Matrix**: [Phishing for Information (T1598)](https://attack.mitre.org/techniques/T1598/)
-- **MITRE ATT&CK Enterprise Matrix**: [Internal Spearphishing (T1534)](https://attack.mitre.org/techniques/T1534/)
+- **MITRE ATT&CK Framework**: Current framework release is [ATT&CK v20.0](https://attack.mitre.org/resources/versions/) (released October 13, 2026).
+- **MITRE ATT&CK Enterprise Matrix**: [Phishing (T1566)](https://attack.mitre.org/techniques/T1566/) (Initial Access tactic)
+- **MITRE ATT&CK Enterprise Matrix**: [Phishing for Information (T1598)](https://attack.mitre.org/techniques/T1598/) (Reconnaissance / Credential Access)
+- **MITRE ATT&CK Enterprise Matrix**: [Internal Spearphishing (T1534)](https://attack.mitre.org/techniques/T1534/) (Lateral Movement)
 - **OWASP**: [Phishing Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Phishing_Prevention_Cheat_Sheet.html)
 - **OWASP**: [Automated Threats Handbook (OAT-019 / Account Takeover)](https://owasp.org/www-project-automated-threats-to-web-applications/)
+
+> [!NOTE]
+> The MITRE ATT&CK framework is versioned globally (v20.0 as of October 2026), while individual techniques maintain their own sub-versioning and revision histories. The core sub-technique IDs cataloged below (T1566.001–.004) reflect verified classifications maintained within the active framework.
 
 ---
 

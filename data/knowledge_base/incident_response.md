@@ -6,7 +6,7 @@
 > 
 > This document is technical reference material and does not constitute an officially approved organizational Incident Response Plan (IRP). According to primary guidance from CISA (*Incident Response Plan Basics*) and NIST (*SP 800-61 Rev. 3*), an effective incident response capability requires a formal, written IRP customized to the organization's unique operational environment, authorized by executive leadership, reviewed by legal counsel, and drilled through periodic tabletop exercises.
 > 
-> **Document Type**: Authoritative Reference Guidance  
+> **Document Type**: Source-Backed Reference Guidance  
 > **Target Audience**: Incident Responders, Security Analysts, Automated Triage Engines  
 > **Sources**: NIST (SP 800-61 Rev. 3), CISA (Incident Response Plan Basics, Phishing Guidance), MITRE ATT&CK (T1566)  
 > **Source Verification Date**: 2026-10-29
@@ -136,4 +136,4 @@ The procedures in this guidance are grounded in the following official publicati
 | **Incident Response Plan Basics** | CISA | February 1, 2024 | [CISA IRP Basics (PDF)](https://www.cisa.gov/sites/default/files/2024-02/Incident-Response-Plan-Basics_508c_1Feb2024.pdf) | 2026-10-29 |
 | **Phishing Guidance: Stopping the Attack Cycle at Phase One** | CISA / NSA / FBI / MS-ISAC | October 18, 2023 (PDF refreshed March 2025) | [CISA Phishing Guidance](https://www.cisa.gov/resources-tools/resources/phishing-guidance-stopping-attack-cycle-phase-one) | 2026-10-29 |
 | **Secure Our World: Phishing Tip Sheet** | CISA | September 2024 | [CISA Phishing Tip Sheet (PDF)](https://www.cisa.gov/sites/default/files/2024-09/Secure-Our-World-Phishing-Tip-Sheet.pdf) | 2026-10-29 |
-| **MITRE ATT&CK: Phishing (T1566)** | MITRE Corporation | v15 (Current) | [MITRE ATT&CK T1566](https://attack.mitre.org/techniques/T1566/) | 2026-10-29 |
+| **MITRE ATT&CK: Phishing (T1566)** | MITRE Corporation | Framework v20.0 (October 13, 2026; Technique T1566) | [MITRE ATT&CK T1566](https://attack.mitre.org/techniques/T1566/) | 2026-10-29 |

@@ -1,6 +1,6 @@
 import { AnalyzeRequest, AnalyzeResponse, ErrorResponse } from "../types/api";
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/+$/, "");
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
 
 export class ApiError extends Error {
   status: number;
@@ -50,7 +50,17 @@ export async function analyzeEmail(payload: AnalyzeRequest): Promise<AnalyzeResp
     if (err instanceof ApiError) {
       throw err;
     }
-    const message = err instanceof Error ? err.message : "Network error: Unable to contact analysis backend.";
+    const rawMessage = err instanceof Error ? err.message : "";
+    const isConnectionError =
+      !rawMessage ||
+      rawMessage === "Failed to fetch" ||
+      rawMessage.toLowerCase().includes("could not connect") ||
+      rawMessage.toLowerCase().includes("access control") ||
+      rawMessage.toLowerCase().includes("networkerror");
+
+    const message = isConnectionError
+      ? "Could not connect to the analysis backend server. Please verify the FastAPI backend is running on http://127.0.0.1:8000."
+      : rawMessage || "Network error: Unable to contact analysis backend.";
     throw new ApiError(message, 0);
   }
 }

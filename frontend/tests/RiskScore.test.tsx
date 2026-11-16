@@ -17,9 +17,9 @@ describe("RiskScore Component", () => {
 
     expect(screen.getByText("84.5")).toBeInTheDocument();
     expect(screen.getByText(/Critical Tier/i)).toBeInTheDocument();
-    expect(screen.getByText(/Immediate Containment & Purge Recommended/i)).toBeInTheDocument();
-    expect(screen.getByText(/Mandatory Escalation/i)).toBeInTheDocument();
-    expect(screen.getByText(/Critical risk tier \(score 84.5 >= 80.0\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Mandatory SOC Escalation/i)).toBeInTheDocument();
+    expect(screen.getByText(/Escalation Required/i)).toBeInTheDocument();
+    expect(screen.getByText(/Critical risk tier/i)).toBeInTheDocument();
     expect(screen.getByText(/req-12345/i)).toBeInTheDocument();
     expect(screen.getByText(/uuid-persist-001/i)).toBeInTheDocument();
 
@@ -39,25 +39,23 @@ describe("RiskScore Component", () => {
 
     expect(screen.getByText("15.0")).toBeInTheDocument();
     expect(screen.getByText(/Low Tier/i)).toBeInTheDocument();
-    expect(screen.getByText(/Standard Gateway Delivery/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Mandatory Escalation/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Operational Escalation Rule Triggered/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Escalation Required/i)).not.toBeInTheDocument();
   });
 
-  it("renders High tier with quarantine guidance", () => {
+  it("renders High tier with escalation banner", () => {
     render(
       <RiskScore
-        score={68.2}
+        score={72.3}
         classification="High"
         requiresEscalation={true}
-        escalationReason="High-uncertainty triage tier (score 68.2 in 60.0–79.9)"
+        escalationReason="High confidence model divergence"
         requestId="req-high-01"
       />
     );
 
-    expect(screen.getByText("68.2")).toBeInTheDocument();
+    expect(screen.getByText("72.3")).toBeInTheDocument();
     expect(screen.getByText(/High Tier/i)).toBeInTheDocument();
-    expect(screen.getByText(/Automated Quarantine & SOC Review Recommended/i)).toBeInTheDocument();
+    expect(screen.getByText(/Escalation Required/i)).toBeInTheDocument();
+    expect(screen.getByText(/High confidence model divergence/i)).toBeInTheDocument();
   });
 });
-

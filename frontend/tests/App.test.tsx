@@ -5,6 +5,14 @@ import { App } from "../src/App";
 import * as api from "../src/services/api";
 import { AnalyzeResponse } from "../src/types/api";
 
+// Mock Lenis to avoid DOM issues in jsdom
+vi.mock("lenis", () => ({
+  default: class {
+    raf() {}
+    destroy() {}
+  },
+}));
+
 const MOCK_RESPONSE: AnalyzeResponse = {
   request_id: "req-app-test-001",
   analysis_id: "persist-uuid-999",
@@ -64,7 +72,7 @@ describe("App Root Integration Component", () => {
   it("renders initial empty state with header and form before analysis", () => {
     render(<App />);
 
-    expect(screen.getByRole("heading", { level: 1, name: /AI Phishing Risk & Triage Platform/i })).toBeInTheDocument();
+    expect(screen.getByText(/AI Phishing Risk & Triage Platform/i)).toBeInTheDocument();
     expect(screen.getByText(/No Analysis Executed Yet/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Analyze Email/i })).toBeInTheDocument();
   });
@@ -80,7 +88,6 @@ describe("App Root Integration Component", () => {
     const submitBtn = screen.getByRole("button", { name: /Analyze Email/i });
     fireEvent.click(submitBtn);
 
-    // Initial state disappears and results appear
     await waitFor(() => {
       expect(screen.getByText("84.5")).toBeInTheDocument();
     });

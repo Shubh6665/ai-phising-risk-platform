@@ -1,29 +1,16 @@
 import React from "react";
 
-/** Minimal, refined background: subtle dark canvas with fine engineering grid */
-export const AnimatedBackground: React.FC = () => {
-  return (
-    <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none" aria-hidden="true">
-      {/* Base deep dark background */}
-      <div className="absolute inset-0 bg-[#0b0f19]" />
-
-      {/* Fine subtle engineering grid */}
-      <div
-        className="absolute inset-0 opacity-[0.18]"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
-          backgroundSize: "32px 32px",
-        }}
-      />
-
-      {/* Very subtle top vignette */}
-      <div
-        className="absolute inset-x-0 top-0 h-48 pointer-events-none"
-        style={{
-          background: "linear-gradient(to bottom, rgba(15, 23, 42, 0.4), transparent)",
-        }}
-      />
-    </div>
-  );
-};
+/** Pure CSS subtle background — no animations, no neon, no grid */
+export const AnimatedBackground: React.FC = () => (
+  <div className="fixed inset-0 -z-10 pointer-events-none" aria-hidden="true">
+    <div className="absolute inset-0 bg-bg" />
+    {/* Very subtle radial gradient to give depth without distracting */}
+    <div
+      className="absolute inset-0"
+      style={{
+        background:
+          "radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255,255,255,0.03) 0%, transparent 100%)",
+      }}
+    />
+  </div>
+);

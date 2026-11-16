@@ -1,75 +1,58 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { describe, it, expect } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 import { PipelineVisualizerPage } from "../src/pages/PipelineVisualizerPage";
-import { AnalysisProvider } from "../src/context/AnalysisContext";
 
-const renderPipelinePage = () => {
-  return render(
+const renderPage = () =>
+  render(
     <BrowserRouter>
-      <AnalysisProvider>
-        <PipelineVisualizerPage />
-      </AnalysisProvider>
+      <PipelineVisualizerPage />
     </BrowserRouter>
   );
-};
 
 describe("PipelineVisualizerPage Component", () => {
-  it("renders page header, system design title, and live simulator section", () => {
-    renderPipelinePage();
+  it("renders page header and pipeline stage list", () => {
+    renderPage();
 
-    expect(
-      screen.getByRole("heading", { level: 1, name: /System Design & Pipeline Data Flow Inspector/i })
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Live Payload Simulator & Trace Input/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Simulate Flow Execution/i })).toBeInTheDocument();
+    expect(screen.getByText(/Backend Request Pipeline/i)).toBeInTheDocument();
+    expect(screen.getByText(/Processing Stages/i)).toBeInTheDocument();
+    expect(screen.getByText(/9 steps/i)).toBeInTheDocument();
   });
 
-  it("renders all 7 architectural pipeline steps", () => {
-    renderPipelinePage();
+  it("renders all pipeline stage titles", () => {
+    renderPage();
 
-    expect(screen.getByText(/7 Connected Sub-systems/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/FastAPI Gateway/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Data Preprocessing/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Dual ML/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Phase 5/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/ChromaDB Vector/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/LangGraph Multi-Tool/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/PostgreSQL Persistence/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/FastAPI Gateway/i)).toBeInTheDocument();
+    expect(screen.getByText(/Feature Engineering/i)).toBeInTheDocument();
+    expect(screen.getByText(/Dual ML/i)).toBeInTheDocument();
+    expect(screen.getByText(/Ensemble Scoring/i)).toBeInTheDocument();
+    expect(screen.getByText(/PostgreSQL Persistence/i)).toBeInTheDocument();
+    expect(screen.getByText(/RAG Evidence Retrieval/i)).toBeInTheDocument();
+    expect(screen.getByText(/LangGraph Agent/i)).toBeInTheDocument();
+    expect(screen.getByText(/LLM Explanation/i)).toBeInTheDocument();
+    expect(screen.getByText(/Response Assembly/i)).toBeInTheDocument();
   });
 
-  it("switches displayed step details when a step node is clicked", () => {
-    renderPipelinePage();
+  it("displays step detail panel when a step is clicked", () => {
+    renderPage();
 
-    // Default step is step 1 (FastAPI Gateway)
+    const gatewayBtn = screen.getByText(/FastAPI Gateway/).closest("button");
+    expect(gatewayBtn).not.toBeNull();
+    fireEvent.click(gatewayBtn!);
+
     expect(screen.getByText(/POST \/api\/v1\/analyze/i)).toBeInTheDocument();
     expect(screen.getByText(/src\/api\/routes\/analyze\.py/i)).toBeInTheDocument();
-
-    // Click Step 5 (ChromaDB Vector)
-    const ragStepBtn = screen.getByText(/ChromaDB Vector/i).closest("button");
-    expect(ragStepBtn).not.toBeNull();
-    fireEvent.click(ragStepBtn!);
-
-    expect(
-      screen.getByRole("heading", { level: 2, name: /ChromaDB Vector Retrieval \(RAG Pipeline\)/i })
-    ).toBeInTheDocument();
-    expect(screen.getByText(/src\/rag\/retriever\.py/i)).toBeInTheDocument();
-    expect(screen.getByText(/384-dimensional Dense Embeddings/i)).toBeInTheDocument();
+    expect(screen.getByText(/Internal Operations/i)).toBeInTheDocument();
   });
 
-  it("allows updating simulator subject and body payload", async () => {
-    renderPipelinePage();
+  it("renders input and output schema sections in detail view", () => {
+    renderPage();
 
-    const subjectInput = screen.getByPlaceholderText(/Subject line\.\.\./i);
-    const bodyInput = screen.getByPlaceholderText(/Raw email payload\.\.\./i);
+    const ragBtn = screen.getByText(/RAG Evidence Retrieval/i).closest("button");
+    expect(ragBtn).not.toBeNull();
+    fireEvent.click(ragBtn!);
 
-    await userEvent.clear(subjectInput);
-    await userEvent.type(subjectInput, "Simulated Phishing Wave");
-    expect(subjectInput).toHaveValue("Simulated Phishing Wave");
-
-    await userEvent.clear(bodyInput);
-    await userEvent.type(bodyInput, "Suspicious link at http://badhost.biz");
-    expect(bodyInput).toHaveValue("Suspicious link at http://badhost.biz");
+    expect(screen.getByText(/Input Schema/i)).toBeInTheDocument();
+    expect(screen.getByText(/Output Contract/i)).toBeInTheDocument();
   });
 });

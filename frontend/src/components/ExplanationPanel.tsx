@@ -1,5 +1,5 @@
 import React from "react";
-import { Shield, CheckCircle, AlertTriangle, Layers, FileCheck } from "lucide-react";
+import { FileText, Lightbulb, ShieldCheck, AlertCircle } from "lucide-react";
 import { InvestigationExplanation } from "../types/api";
 
 interface ExplanationPanelProps {
@@ -9,131 +9,83 @@ interface ExplanationPanelProps {
 export const ExplanationPanel: React.FC<ExplanationPanelProps> = ({ explanation }) => {
   if (!explanation) {
     return (
-      <div className="bg-[#111726] border border-slate-800 rounded-xl p-6 text-center text-slate-500 italic text-xs">
-        Agent investigation narrative is unavailable for this analysis.
+      <div className="card p-5">
+        <p className="text-sm text-zinc-500">Agent investigation narrative is unavailable.</p>
       </div>
     );
   }
 
-  const getProviderLabel = (provider?: string | null, status?: string) => {
-    if (status === "disabled") {
-      return { label: "LLM Synthesis Disabled by Config", color: "text-slate-400 bg-slate-900 border-slate-800" };
-    }
-    if (provider === "google") {
-      return { label: "Google Gemini 3.8 Flash (Primary LLM)", color: "text-cyan-300 bg-cyan-950/60 border-cyan-800/80" };
-    }
-    if (provider === "groq") {
-      return { label: "Groq OpenAI GPT-OSS 120B (Fallback LLM)", color: "text-orange-300 bg-orange-950/60 border-orange-800/80" };
-    }
-    return { label: "Deterministic Degraded Generator (Zero Hallucination)", color: "text-amber-300 bg-amber-950/60 border-amber-800/80" };
-  };
-
-  const providerMeta = getProviderLabel(explanation.provider_used, explanation.generation_status);
+  const providerLabel =
+    explanation.provider_used === "gemini" || explanation.provider_used === "google"
+      ? "Gemini"
+      : explanation.provider_used === "groq"
+        ? "Groq"
+        : "Deterministic";
 
   return (
-    <div className="bg-[#111726] border border-slate-800 rounded-xl p-6 shadow-sm space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-2">
-        <div>
-          <h3 className="text-base font-semibold text-white flex items-center gap-2">
-            <FileCheck className="w-4 h-4 text-cyan-400" />
-            <span>LangGraph Investigation Explanation & Recommendations</span>
-          </h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Synthesis grounded strictly in statistical model signals, URL anomalies, and authoritative security playbooks.
-          </p>
+    <div className="card animate-fade-up delay-200">
+      <div className="card-header">
+        <div className="flex items-center gap-2">
+          <FileText className="w-4 h-4 text-zinc-500" />
+          <p className="text-sm font-semibold text-zinc-100">Investigation Summary</p>
         </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={`text-xs font-mono px-2.5 py-0.5 rounded-md border ${providerMeta.color} flex items-center gap-1.5`}>
-            <Shield className="w-3 h-3" />
-            <span>{providerMeta.label}</span>
-          </span>
-          <span className="text-xs font-mono uppercase bg-slate-900 text-slate-400 px-2.5 py-0.5 rounded-md border border-slate-800">
-            Status: {explanation.generation_status}
-          </span>
-        </div>
+        <span className="label font-mono">{providerLabel} · {explanation.generation_status}</span>
       </div>
 
-      {/* 1. Executive Summary */}
-      <div className="bg-[#0b0f19] border border-slate-800 rounded-lg p-4">
-        <h4 className="text-xs font-mono uppercase text-slate-400 tracking-wider mb-1.5 flex items-center gap-1.5 font-semibold">
-          <FileCheck className="w-3.5 h-3.5 text-cyan-400" />
-          <span>Executive Briefing</span>
-        </h4>
-        <p className="text-sm text-slate-200 leading-relaxed font-sans select-text">
-          {explanation.summary}
-        </p>
-      </div>
+      <div className="p-5 space-y-5">
+        {/* Summary */}
+        <p className="text-sm text-zinc-300 leading-relaxed">{explanation.summary}</p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* 2. Key Findings */}
-        <div className="bg-[#0b0f19] border border-slate-800 rounded-lg p-4">
-          <h4 className="text-xs font-mono uppercase text-slate-400 tracking-wider mb-2 flex items-center gap-1.5 font-semibold">
-            <Layers className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Key Empirical Findings</span>
-          </h4>
-          {explanation.key_findings.length === 0 ? (
-            <p className="text-xs text-slate-500 italic">No specific risk indicators flagged.</p>
-          ) : (
-            <ul className="space-y-1.5 text-xs text-slate-300">
-              {explanation.key_findings.map((item, idx) => (
-                <li key={idx} className="flex items-start gap-2">
-                  <span className="text-cyan-400 mt-0.5">•</span>
-                  <span className="select-text">{item}</span>
+        {/* Key Findings */}
+        {explanation.key_findings.length > 0 && (
+          <div>
+            <div className="flex items-center gap-1.5 mb-3">
+              <Lightbulb className="w-3.5 h-3.5 text-zinc-500" />
+              <span className="label">Key Findings</span>
+            </div>
+            <ul className="space-y-2">
+              {explanation.key_findings.map((f, i) => (
+                <li key={i} className="text-sm text-zinc-400 pl-4 relative before:absolute before:left-0 before:top-[7px] before:w-1 before:h-1 before:rounded-full before:bg-zinc-600">
+                  {f}
                 </li>
               ))}
             </ul>
-          )}
-        </div>
-
-        {/* 3. Recommended Actions (Advisory Only) */}
-        <div className="bg-[#0b0f19] border border-slate-800 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="text-xs font-mono uppercase text-slate-400 tracking-wider flex items-center gap-1.5 font-semibold">
-              <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Recommended Defensive Steps</span>
-            </h4>
-            <span className="text-[10px] font-mono text-amber-300 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-800/40">
-              Advisory Controls
-            </span>
           </div>
-          {explanation.recommended_actions.length === 0 ? (
-            <p className="text-xs text-slate-500 italic">Standard mail gateway hygiene applies.</p>
-          ) : (
-            <ul className="space-y-1.5 text-xs text-slate-300">
-              {explanation.recommended_actions.map((act, idx) => (
-                <li key={idx} className="flex items-start gap-2">
-                  <span className="text-emerald-400 mt-0.5">✓</span>
-                  <span className="select-text">{act}</span>
-                </li>
+        )}
+
+        {/* Risk explanation */}
+        {explanation.risk_explanation && (
+          <div className="p-4 rounded-lg bg-surface-raised border border-white/[0.05]">
+            <span className="label block mb-2">Risk Assessment</span>
+            <p className="text-sm text-zinc-400 leading-relaxed">{explanation.risk_explanation}</p>
+          </div>
+        )}
+
+        {/* Advisory actions */}
+        {explanation.recommended_actions.length > 0 && (
+          <div>
+            <div className="flex items-center gap-1.5 mb-3">
+              <ShieldCheck className="w-3.5 h-3.5 text-zinc-500" />
+              <span className="label">Advisory SOC Actions</span>
+            </div>
+            <div className="space-y-2">
+              {explanation.recommended_actions.map((a, i) => (
+                <div key={i} className="flex items-start gap-3 text-sm text-zinc-400">
+                  <span className="label mt-0.5 shrink-0 w-5 text-right font-mono">{i + 1}.</span>
+                  <span>{a}</span>
+                </div>
               ))}
-            </ul>
-          )}
-        </div>
-      </div>
+            </div>
+          </div>
+        )}
 
-      {/* 4. Risk Rationale */}
-      <div className="bg-[#0b0f19] border border-slate-800 rounded-lg p-4">
-        <h4 className="text-xs font-mono uppercase text-slate-400 tracking-wider mb-1.5 font-semibold">
-          Technical Risk Rationale
-        </h4>
-        <p className="text-xs text-slate-300 leading-relaxed font-sans select-text">
-          {explanation.risk_explanation}
-        </p>
-      </div>
-
-      {/* 5. Limitations & Grounding Evidence Citations */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-slate-400 pt-3 border-t border-slate-800">
-        <div className="flex items-center gap-1.5 text-xs text-slate-500">
-          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-          <span>
-            Limitations: Static offline heuristics; no dynamic browser or sandbox detonation executed.
-          </span>
-        </div>
-
-        {explanation.evidence_references.length > 0 && (
-          <div className="flex items-center gap-1.5 text-xs font-mono text-cyan-400/80 shrink-0">
-            <span>Citations: {explanation.evidence_references.join(", ")}</span>
+        {/* Limitations */}
+        {explanation.limitations.length > 0 && (
+          <div className="pt-4 border-t border-white/[0.05]">
+            <div className="flex items-start gap-2 text-xs text-zinc-600">
+              <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <p>{explanation.limitations.join(" ")}</p>
+            </div>
           </div>
         )}
       </div>

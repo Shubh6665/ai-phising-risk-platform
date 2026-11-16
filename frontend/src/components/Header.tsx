@@ -1,64 +1,91 @@
-import React from "react";
-import { NavLink } from "react-router-dom";
-import { ShieldCheck, Cpu, Network, LayoutDashboard } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { NavLink, Link } from "react-router-dom";
+import { Menu, X } from "lucide-react";
+
+const NAV = [
+  { to: "/", label: "Analysis", end: true },
+  { to: "/pipeline", label: "Architecture", end: false },
+] as const;
 
 export const Header: React.FC = () => {
+  const [scrolled, setScrolled] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const fn = () => setScrolled(window.scrollY > 12);
+    window.addEventListener("scroll", fn, { passive: true });
+    return () => window.removeEventListener("scroll", fn);
+  }, []);
+
   return (
-    <header className="border-b border-slate-800 bg-[#0d121f]/90 backdrop-blur-md sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row items-center justify-between gap-3">
-        {/* Branding & Title */}
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-cyan-400">
-            <ShieldCheck className="w-5 h-5" />
+    <header
+      className={`sticky top-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? "bg-bg/80 backdrop-blur-xl border-b border-white/[0.06]"
+          : "bg-transparent"
+      }`}
+    >
+      <div className="max-w-6xl mx-auto px-5 h-14 flex items-center justify-between">
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-2 group">
+          <div className="w-6 h-6 rounded-md bg-zinc-800 border border-white/10 flex items-center justify-center">
+            <span className="text-xs font-bold text-zinc-200">P</span>
           </div>
-          <div>
-            <h1 className="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2">
-              <span>AI Phishing Risk & Triage Platform</span>
-            </h1>
-            <p className="text-xs text-slate-400 font-normal">
-              Multi-Layer Defense: Random Forest + DistilBERT + RAG + LangGraph SOC Agent
-            </p>
-          </div>
-        </div>
+          <span className="font-semibold text-sm text-zinc-100 tracking-tight">
+            AI Phishing Risk &amp; Triage Platform
+          </span>
+        </Link>
 
-        {/* Navigation Tabs */}
-        <nav className="flex items-center gap-1.5 w-full md:w-auto justify-center" aria-label="Main Navigation">
-          <NavLink
-            to="/"
-            end
-            className={({ isActive }) =>
-              `flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                isActive
-                  ? "bg-slate-800 text-white border border-slate-700"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent"
-              }`
-            }
-          >
-            <LayoutDashboard className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Analysis</span>
-          </NavLink>
-
-          <NavLink
-            to="/pipeline"
-            className={({ isActive }) =>
-              `flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                isActive
-                  ? "bg-slate-800 text-white border border-slate-700"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent"
-              }`
-            }
-          >
-            <Network className="w-3.5 h-3.5 text-violet-400" />
-            <span>Backend Overview & System Design</span>
-          </NavLink>
+        {/* Desktop nav */}
+        <nav className="hidden md:flex items-center gap-1" aria-label="Main Navigation">
+          {NAV.map(({ to, label, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) =>
+                `px-3.5 py-1.5 text-sm rounded-md font-medium transition-colors ${
+                  isActive
+                    ? "text-zinc-100 bg-white/[0.08]"
+                    : "text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04]"
+                }`
+              }
+            >
+              {label}
+            </NavLink>
+          ))}
         </nav>
 
-        {/* Status Pill */}
-        <div className="hidden lg:flex items-center gap-2 text-xs font-mono text-slate-400 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
-          <Cpu className="w-3.5 h-3.5 text-cyan-400" />
-          <span>Active Ensemble: RF + DistilBERT + RAG + Gemini/Groq</span>
-        </div>
+        {/* Mobile toggle */}
+        <button
+          className="md:hidden text-zinc-500 hover:text-zinc-200 transition-colors p-1"
+          onClick={() => setOpen(!open)}
+          aria-label="Toggle menu"
+        >
+          {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
       </div>
+
+      {/* Mobile menu */}
+      {open && (
+        <div className="md:hidden border-t border-white/[0.06] bg-bg/95 backdrop-blur-xl px-5 pb-4 pt-2">
+          {NAV.map(({ to, label, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              onClick={() => setOpen(false)}
+              className={({ isActive }) =>
+                `block py-2.5 text-sm font-medium border-b border-white/[0.05] last:border-0 ${
+                  isActive ? "text-zinc-100" : "text-zinc-500"
+                }`
+              }
+            >
+              {label}
+            </NavLink>
+          ))}
+        </div>
+      )}
     </header>
   );
 };

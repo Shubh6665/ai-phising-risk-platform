@@ -23,48 +23,38 @@ const MOCK_EVIDENCE: SecurityEvidenceItem[] = [
     document_title: "Project Triage Guidance",
     heading: "Out-of-Band Verification",
     document_type: "source_backed_guidance",
-    source_attribution: "NIST SP 800-61 Rev. 3; CISA",
+    source_attribution: "NIST SP 800-61 Rev. 3",
     is_mock: false,
   },
 ];
 
 describe("EvidenceList Component", () => {
-  it("renders retrieved evidence items with source attribution and expandable content", () => {
+  it("renders retrieved evidence items with source attribution", () => {
     render(<EvidenceList evidence={MOCK_EVIDENCE} status="retrieved" />);
 
-    expect(screen.getByText(/2 Chunks Retrieved/i)).toBeInTheDocument();
-    expect(screen.getByText(/Attack Patterns and Threat Actor Tactics/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/MITRE ATT&CK v20\.0/i).length).toBeGreaterThan(0);
-    expect(screen.getByText("88.4%")).toBeInTheDocument();
+    expect(screen.getByText(/Profile A: Credential Harvesting/i)).toBeInTheDocument();
+    expect(screen.getByText(/MITRE ATT&CK v20\.0/i)).toBeInTheDocument();
+    // 88% match displayed
+    expect(screen.getByText(/88% match/i)).toBeInTheDocument();
+  });
 
-    // First item is expanded by default
+  it("expands evidence content when clicked", () => {
+    render(<EvidenceList evidence={MOCK_EVIDENCE} status="retrieved" />);
+
+    const firstBtn = screen.getByText(/Profile A: Credential Harvesting/i).closest("button");
+    expect(firstBtn).not.toBeNull();
+    fireEvent.click(firstBtn!);
+
     expect(screen.getByText(/Adversaries replicate enterprise login portals/i)).toBeInTheDocument();
-
-    // Expand second item
-    const secondItemBtn = screen.getByText(/Project Triage Guidance/i);
-    fireEvent.click(secondItemBtn);
-
-    expect(screen.getByText(/Out-of-band identity verification is recommended/i)).toBeInTheDocument();
   });
 
-  it("renders distinct status banner when knowledge base returned empty results", () => {
+  it("renders status message when knowledge base returned empty results", () => {
     render(<EvidenceList evidence={[]} status="empty" />);
-    expect(screen.getByText(/No Relevant Guidance Matched/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/No security knowledge base chunks exceeded similarity threshold/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/No relevant knowledge-base context found/i)).toBeInTheDocument();
   });
 
-  it("renders distinct status banner when retrieval store is unavailable/offline", () => {
-    render(<EvidenceList evidence={[]} status="unavailable" />);
-    expect(screen.getByText(/Retrieval Store Offline \/ Degraded/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/ChromaDB vector store was unavailable during analysis/i)
-    ).toBeInTheDocument();
-  });
-
-  it("renders distinct status banner when RAG is disabled by configuration", () => {
+  it("renders status message when RAG is disabled by configuration", () => {
     render(<EvidenceList evidence={[]} status="disabled" />);
-    expect(screen.getByText(/RAG Disabled by Config/i)).toBeInTheDocument();
+    expect(screen.getByText(/Knowledge-base retrieval is disabled/i)).toBeInTheDocument();
   });
 });

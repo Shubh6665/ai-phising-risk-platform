@@ -5,47 +5,37 @@ import { URLObservation } from "../src/types/api";
 
 const MOCK_URLS: URLObservation[] = [
   {
-    url: "http://192.168.1.100:8080/auth/login?token=secret123",
+    url: "http://192.168.1.100:8080/auth/login",
     scheme: "http",
     hostname: "192.168.1.100",
     port: 8080,
     is_ip_literal: true,
+    has_unusual_port: true,
     has_userinfo: false,
     has_punycode: false,
-    has_unusual_port: true,
     subdomain_depth: 0,
     indicator_count: 2,
-    suspicious_indicators: [
-      "IP address literal hostname instead of FQDN",
-      "Non-standard web port (8080)",
-    ],
+    suspicious_indicators: ["IP address literal hostname", "Non-standard web port"],
   },
 ];
 
 describe("InvestigationFindings Component", () => {
-  it("renders structural URL observations and detected anomalies", () => {
+  it("renders URL as inert text with anomaly indicators", () => {
     render(<InvestigationFindings urls={MOCK_URLS} />);
 
-    expect(screen.getByText(/1 URL Extracted/i)).toBeInTheDocument();
-    expect(screen.getByText("192.168.1.100")).toBeInTheDocument();
-    expect(screen.getByText(/Port 8080/i)).toBeInTheDocument();
-    expect(screen.getByText(/2 Anomalies/i)).toBeInTheDocument();
-    expect(screen.getByText(/• IP address literal hostname instead of FQDN/i)).toBeInTheDocument();
-    expect(screen.getByText(/• Non-standard web port \(8080\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/Operational Context:/i)).toBeInTheDocument();
+    expect(screen.getByText("http://192.168.1.100:8080/auth/login")).toBeInTheDocument();
+    expect(screen.getByText(/IP address literal hostname/i)).toBeInTheDocument();
+    expect(screen.getByText(/Non-standard web port/i)).toBeInTheDocument();
   });
 
-  it("renders empty state when no URLs were detected", () => {
-    render(<InvestigationFindings urls={[]} />);
-    expect(screen.getByText(/0 URLs Extracted/i)).toBeInTheDocument();
-    expect(screen.getByText(/No hyperlinks or URLs were detected/i)).toBeInTheDocument();
-  });
-
-  it("renders URLs strictly as non-navigable text", () => {
+  it("renders URLs strictly as non-navigable text — no anchor links", () => {
     render(<InvestigationFindings urls={MOCK_URLS} />);
-    // Ensure no <a href="http://192.168.1.100..."> link exists in DOM
     const links = screen.queryAllByRole("link");
     expect(links.length).toBe(0);
   });
-});
 
+  it("renders empty state when no URLs detected", () => {
+    render(<InvestigationFindings urls={[]} />);
+    expect(screen.getByText(/No URLs detected/i)).toBeInTheDocument();
+  });
+});

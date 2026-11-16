@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Send, RefreshCw, AlertCircle, Mail, RotateCcw } from "lucide-react";
+import { Send, RotateCcw, Loader2 } from "lucide-react";
 import { AnalyzeRequest } from "../types/api";
 
 interface AnalysisFormProps {
@@ -31,12 +31,10 @@ export const AnalysisForm: React.FC<AnalysisFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!text.trim()) {
-      setValidationError("Email body text cannot be empty or whitespace only.");
+      setValidationError("Email body cannot be empty.");
       return;
     }
-
     setValidationError(null);
     await onSubmit({
       subject: subject.trim() ? subject.trim() : undefined,
@@ -58,131 +56,110 @@ export const AnalysisForm: React.FC<AnalysisFormProps> = ({
   };
 
   return (
-    <div className="bg-[#111726] border border-slate-800 rounded-xl p-6 shadow-sm">
-      {/* Top Header & Presets */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-slate-800 gap-3">
+    <div className="card">
+      {/* Card header */}
+      <div className="card-header">
         <div>
-          <h2 className="text-base font-semibold text-white flex items-center gap-2">
-            <Mail className="w-4 h-4 text-cyan-400" />
-            <span>Analyze Suspicious Email</span>
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Submit raw header metadata and message body for real-time model inference and investigation.
+          <p className="text-sm font-semibold text-zinc-100">Analyze Suspicious Email</p>
+          <p className="text-xs text-zinc-500 mt-0.5">
+            Paste raw email content for multi-model risk inference.
           </p>
         </div>
-
-        {/* Sample Loaders */}
-        <div className="flex items-center flex-wrap gap-2">
-          <span className="text-[11px] font-mono text-slate-500 uppercase tracking-wide mr-1 hidden sm:inline">
-            Load Preset:
-          </span>
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => loadSample(PHISHING_SAMPLE)}
             disabled={isLoading}
-            className="text-xs bg-red-950/40 hover:bg-red-900/50 text-red-300 border border-red-900/50 px-3 py-1.5 rounded-lg transition-colors font-medium disabled:opacity-50"
+            className="text-xs px-3 py-1.5 rounded-md border border-white/[0.07] text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04] transition-colors disabled:opacity-40"
           >
-            Phishing Sample
+            Phishing sample
           </button>
           <button
             type="button"
             onClick={() => loadSample(LEGITIMATE_SAMPLE)}
             disabled={isLoading}
-            className="text-xs bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-300 border border-emerald-900/50 px-3 py-1.5 rounded-lg transition-colors font-medium disabled:opacity-50"
+            className="text-xs px-3 py-1.5 rounded-md border border-white/[0.07] text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04] transition-colors disabled:opacity-40"
           >
-            Legitimate Sample
+            Legitimate sample
           </button>
-          {(subject || text || hasResult) && (
-            <button
-              type="button"
-              onClick={handleClear}
-              disabled={isLoading}
-              className="text-xs text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center gap-1"
-            >
-              <RotateCcw className="w-3 h-3" />
-              <span>Clear</span>
-            </button>
-          )}
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-        {/* Email Subject Field */}
+      {/* Form body */}
+      <form onSubmit={handleSubmit} className="p-5 space-y-4">
         <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label
-              htmlFor="email-subject"
-              className="block text-xs font-medium text-slate-300 uppercase tracking-wider"
-            >
-              Email Subject <span className="text-slate-500 font-normal lowercase">(optional)</span>
-            </label>
-            <span className="text-[11px] font-mono text-slate-500">{subject.length} chars</span>
-          </div>
+          <label htmlFor="email-subject" className="label block mb-1.5">
+            Subject <span className="normal-case font-normal text-zinc-600">(optional)</span>
+          </label>
           <input
             id="email-subject"
             type="text"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             disabled={isLoading}
-            placeholder="e.g. URGENT: Verify your payroll credentials"
-            className="w-full bg-[#0b0f19] border border-slate-800 rounded-lg px-3.5 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors disabled:opacity-60"
+            placeholder="Email subject line..."
+            className="input"
           />
         </div>
 
-        {/* Email Body Field */}
         <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label
-              htmlFor="email-body"
-              className="block text-xs font-medium text-slate-300 uppercase tracking-wider"
-            >
-              Email Body Content <span className="text-cyan-400">*</span>
-            </label>
-            <span className="text-[11px] font-mono text-slate-500">{text.length} chars</span>
-          </div>
+          <label htmlFor="email-body-content" className="label block mb-1.5" aria-label="Email Body Content">
+            Email Body Content
+          </label>
           <textarea
-            id="email-body"
-            rows={7}
+            id="email-body-content"
+            aria-label="Email Body Content"
             value={text}
             onChange={(e) => {
               setText(e.target.value);
               if (validationError) setValidationError(null);
             }}
             disabled={isLoading}
-            placeholder="Paste full raw email body text or headers here..."
-            className="w-full bg-[#0b0f19] border border-slate-800 rounded-lg p-3.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors font-mono disabled:opacity-60 leading-relaxed"
+            placeholder="Paste the complete email body here..."
+            rows={8}
+            className="input resize-y min-h-[120px] font-mono text-xs leading-relaxed"
           />
-          {validationError && (
-            <p className="mt-1.5 text-xs text-red-400 flex items-center gap-1.5" role="alert">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{validationError}</span>
-            </p>
-          )}
+          <div className="mt-1.5 h-4">
+            {validationError ? (
+              <span className="text-xs text-red-400">{validationError}</span>
+            ) : (
+              <span className="text-xs text-zinc-600">{text.length.toLocaleString()} chars</span>
+            )}
+          </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <p className="text-xs text-slate-500">
-            Privacy safeguard: Raw email text is never persisted or transmitted to external LLMs.
-          </p>
-
+        {/* Actions */}
+        <div className="flex items-center gap-2 pt-1">
           <button
             type="submit"
-            disabled={isLoading}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isLoading || !text.trim()}
+            className="btn-primary"
+            aria-label="Analyze Email"
           >
             {isLoading ? (
               <>
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>Analyzing Signals...</span>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Analyzing…
               </>
             ) : (
               <>
                 <Send className="w-3.5 h-3.5" />
-                <span>Analyze Email</span>
+                Analyze Email
               </>
             )}
           </button>
+
+          {(subject || text || hasResult) && !isLoading && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="btn-ghost"
+              aria-label="Clear"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Clear
+            </button>
+          )}
         </div>
       </form>
     </div>

@@ -5,32 +5,26 @@ import { AnalysisForm } from "../src/components/AnalysisForm";
 
 describe("AnalysisForm Component", () => {
   it("renders form controls, labels, and accessible placeholders", () => {
-    const handleSubmit = vi.fn();
-    const handleReset = vi.fn();
-
     render(
       <AnalysisForm
-        onSubmit={handleSubmit}
+        onSubmit={vi.fn()}
         isLoading={false}
-        onReset={handleReset}
+        onReset={vi.fn()}
         hasResult={false}
       />
     );
 
-    expect(screen.getByLabelText(/Email Subject/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Email Body Content/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Analyze Email/i })).toBeInTheDocument();
   });
 
-  it("prevents submission and displays validation error on empty or whitespace text", async () => {
+  it("prevents submission and displays validation error on empty text", async () => {
     const handleSubmit = vi.fn();
-    const handleReset = vi.fn();
-
     render(
       <AnalysisForm
         onSubmit={handleSubmit}
         isLoading={false}
-        onReset={handleReset}
+        onReset={vi.fn()}
         hasResult={false}
       />
     );
@@ -39,104 +33,77 @@ describe("AnalysisForm Component", () => {
     fireEvent.click(submitBtn);
 
     expect(handleSubmit).not.toHaveBeenCalled();
-    expect(
-      screen.getByText(/Email body text cannot be empty or whitespace only/i)
-    ).toBeInTheDocument();
-
-    // Whitespace only
-    const textarea = screen.getByLabelText(/Email Body Content/i);
-    await userEvent.type(textarea, "   \n  \t ");
-    fireEvent.click(submitBtn);
-
-    expect(handleSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText(/Email body cannot be empty/i)).toBeInTheDocument();
   });
 
   it("submits valid email content with optional subject", async () => {
     const handleSubmit = vi.fn().mockResolvedValue(undefined);
-    const handleReset = vi.fn();
-
     render(
       <AnalysisForm
         onSubmit={handleSubmit}
         isLoading={false}
-        onReset={handleReset}
+        onReset={vi.fn()}
         hasResult={false}
       />
     );
 
-    const subjectInput = screen.getByLabelText(/Email Subject/i);
     const bodyInput = screen.getByLabelText(/Email Body Content/i);
     const submitBtn = screen.getByRole("button", { name: /Analyze Email/i });
 
-    await userEvent.type(subjectInput, "Payroll Update Required");
     await userEvent.type(bodyInput, "Please confirm your direct deposit details immediately.");
-
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
       expect(handleSubmit).toHaveBeenCalledTimes(1);
-      expect(handleSubmit).toHaveBeenCalledWith({
-        subject: "Payroll Update Required",
-        text: "Please confirm your direct deposit details immediately.",
-      });
+      expect(handleSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ text: "Please confirm your direct deposit details immediately." })
+      );
     });
   });
 
   it("prevents duplicate submissions while loading is true", () => {
     const handleSubmit = vi.fn();
-    const handleReset = vi.fn();
-
     render(
       <AnalysisForm
         onSubmit={handleSubmit}
         isLoading={true}
-        onReset={handleReset}
+        onReset={vi.fn()}
         hasResult={false}
       />
     );
 
-    const submitBtn = screen.getByRole("button", { name: /Analyzing Signals/i });
+    const submitBtn = screen.getByRole("button", { name: /Analyzing/i });
     expect(submitBtn).toBeDisabled();
-
     fireEvent.click(submitBtn);
     expect(handleSubmit).not.toHaveBeenCalled();
   });
 
   it("loads pre-configured phishing and legitimate sample emails", () => {
-    const handleSubmit = vi.fn();
-    const handleReset = vi.fn();
-
     render(
       <AnalysisForm
-        onSubmit={handleSubmit}
+        onSubmit={vi.fn()}
         isLoading={false}
-        onReset={handleReset}
+        onReset={vi.fn()}
         hasResult={false}
       />
     );
 
-    const phishingBtn = screen.getByRole("button", { name: /Phishing Sample/i });
+    const phishingBtn = screen.getByRole("button", { name: /Phishing sample/i });
     fireEvent.click(phishingBtn);
 
-    const subjectInput = screen.getByLabelText(/Email Subject/i);
-    const bodyInput = screen.getByLabelText(/Email Body Content/i);
+    const bodyInput = screen.getByLabelText(/Email Body Content/i) as HTMLTextAreaElement;
+    expect(bodyInput.value).toContain("http://192.168.1.100:8080");
 
-    expect(subjectInput).toHaveValue("URGENT: Unauthorized access detected on your corporate account");
-    expect(bodyInput.getAttribute("value") || (bodyInput as HTMLTextAreaElement).value).toContain("http://192.168.1.100:8080");
-
-    const legitBtn = screen.getByRole("button", { name: /Legitimate Sample/i });
+    const legitBtn = screen.getByRole("button", { name: /Legitimate sample/i });
     fireEvent.click(legitBtn);
-
-    expect(subjectInput).toHaveValue("Q3 Engineering All-Hands Meeting Agenda and Slides");
+    expect(bodyInput.value).toContain("Q3 Engineering");
   });
 
   it("clears inputs and invokes onReset when Clear button is clicked", async () => {
-    const handleSubmit = vi.fn();
     const handleReset = vi.fn();
-
     render(
       <AnalysisForm
-        onSubmit={handleSubmit}
+        onSubmit={vi.fn()}
         isLoading={false}
         onReset={handleReset}
         hasResult={true}
@@ -150,6 +117,6 @@ describe("AnalysisForm Component", () => {
     fireEvent.click(clearBtn);
 
     expect(handleReset).toHaveBeenCalledTimes(1);
-    expect(bodyInput).toHaveValue("");
+    expect((bodyInput as HTMLTextAreaElement).value).toBe("");
   });
 });

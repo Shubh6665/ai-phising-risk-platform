@@ -1,6 +1,6 @@
 import React from "react";
-import { Cpu, Binary, PlusCircle, Scale, AlertTriangle } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
+import { AlertTriangle } from "lucide-react";
 
 interface ModelBreakdownProps {
   mlProbability: number;
@@ -17,139 +17,75 @@ export const ModelBreakdown: React.FC<ModelBreakdownProps> = ({
   const isDivergent = divergence > 0.30;
 
   const chartData = [
-    {
-      name: "Random Forest",
-      probability: Number((mlProbability * 100).toFixed(1)),
-      color: "#0284c7", // sky-600
-    },
-    {
-      name: "DistilBERT",
-      probability: Number((nlpProbability * 100).toFixed(1)),
-      color: "#7c3aed", // violet-600
-    },
+    { name: "Random Forest", value: +(mlProbability * 100).toFixed(1) },
+    { name: "DistilBERT",    value: +(nlpProbability * 100).toFixed(1) },
   ];
 
   return (
-    <div className="bg-[#111726] border border-slate-800 rounded-xl p-6 shadow-sm">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-slate-800 gap-2">
+    <div className="card animate-fade-up delay-50">
+      <div className="card-header">
         <div>
-          <h3 className="text-base font-semibold text-white flex items-center gap-2">
-            <Cpu className="w-4 h-4 text-cyan-400" />
-            <span>Ensemble Model Breakdown</span>
-          </h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Phase 5 hybrid weighting: Classical handcrafted features (40%) + transformer token semantics (60%).
-          </p>
+          <p className="text-sm font-semibold text-zinc-100">Model Breakdown</p>
+          <p className="text-xs text-zinc-500 mt-0.5">Random Forest · DistilBERT · Rule signals</p>
         </div>
-
         {isDivergent && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-950/60 border border-amber-800/80 text-amber-300 text-xs font-mono">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-            <span>High Disagreement Detected</span>
-          </div>
+          <span className="inline-flex items-center gap-1.5 text-xs text-amber-400 font-medium">
+            <AlertTriangle className="w-3.5 h-3.5" />
+            Δ {(divergence * 100).toFixed(0)}% divergence
+          </span>
         )}
       </div>
 
-      {/* 3 Metric Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
-        {/* Card 1: Random Forest */}
-        <div className="bg-[#0b0f19] border border-slate-800 rounded-lg p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-cyan-400 flex items-center gap-1.5 font-medium">
-              <Binary className="w-3.5 h-3.5" />
-              <span>Classical ML</span>
-            </span>
-            <span className="text-[10px] text-slate-500 font-mono">Weight 0.40</span>
-          </div>
-          <div className="my-3">
-            <span className="text-2xl font-bold text-white font-mono">
-              {(mlProbability * 100).toFixed(1)}%
-            </span>
-            <span className="text-xs text-slate-500 font-mono ml-2">
-              (p = {mlProbability.toFixed(4)})
-            </span>
-          </div>
-          <div className="text-xs text-slate-400 border-t border-slate-900 pt-2.5">
-            Random Forest classifier trained on 19 URL and text lexical features.
-          </div>
+      <div className="p-5 space-y-5">
+        {/* Stat cards */}
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: "Random Forest", value: `${(mlProbability * 100).toFixed(1)}%`, sub: "Weight 0.40" },
+            { label: "DistilBERT",    value: `${(nlpProbability * 100).toFixed(1)}%`, sub: "Weight 0.60" },
+            { label: "Rule Bonus",    value: `+${ruleBonus.toFixed(1)}`, sub: "Deterministic" },
+          ].map((s) => (
+            <div key={s.label} className="p-3 rounded-lg bg-surface-raised border border-white/[0.05]">
+              <p className="label mb-1.5">{s.label}</p>
+              <p className="text-lg font-bold text-zinc-100 font-mono tracking-tight">{s.value}</p>
+              <p className="text-[10px] text-zinc-600 mt-0.5">{s.sub}</p>
+            </div>
+          ))}
         </div>
 
-        {/* Card 2: DistilBERT NLP */}
-        <div className="bg-[#0b0f19] border border-slate-800 rounded-lg p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-violet-400 flex items-center gap-1.5 font-medium">
-              <Cpu className="w-3.5 h-3.5" />
-              <span>Transformer NLP</span>
-            </span>
-            <span className="text-[10px] text-slate-500 font-mono">Weight 0.60</span>
-          </div>
-          <div className="my-3">
-            <span className="text-2xl font-bold text-white font-mono">
-              {(nlpProbability * 100).toFixed(1)}%
-            </span>
-            <span className="text-xs text-slate-500 font-mono ml-2">
-              (p = {nlpProbability.toFixed(4)})
-            </span>
-          </div>
-          <div className="text-xs text-slate-400 border-t border-slate-900 pt-2.5">
-            Fine-tuned DistilBERT analyzing contextual semantics and intent patterns.
-          </div>
-        </div>
-
-        {/* Card 3: Rule Bonus & Divergence */}
-        <div className="bg-[#0b0f19] border border-slate-800 rounded-lg p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-emerald-400 flex items-center gap-1.5 font-medium">
-              <PlusCircle className="w-3.5 h-3.5" />
-              <span>Rule Bonus</span>
-            </span>
-            <span className="text-[10px] text-slate-500 font-mono">Heuristics</span>
-          </div>
-          <div className="my-3">
-            <span className="text-2xl font-bold text-white font-mono">
-              +{ruleBonus.toFixed(1)}
-            </span>
-            <span className="text-xs text-slate-500 font-mono ml-2">
-              pts bonus
-            </span>
-          </div>
-          <div className="text-xs text-slate-400 flex items-center justify-between border-t border-slate-900 pt-2.5">
-            <span>Model Divergence:</span>
-            <span className={`font-mono font-semibold ${isDivergent ? "text-amber-400" : "text-slate-300"}`}>
-              Δ {(divergence * 100).toFixed(1)}% {isDivergent && "(High)"}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Visual Comparative Chart */}
-      <div className="mt-5 pt-4 border-t border-slate-800">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-mono text-slate-400 flex items-center gap-1.5">
-            <Scale className="w-3.5 h-3.5 text-slate-400" />
-            <span>Model Probability Distribution (0–100%)</span>
-          </span>
-          <span className="text-[10px] text-slate-500 font-mono">
-            P(phishing) comparison
-          </span>
-        </div>
-        <div className="h-28 w-full bg-[#0b0f19] rounded-lg p-2 border border-slate-800/80">
+        {/* Chart */}
+        <div className="h-28">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={chartData}
-              layout="vertical"
-              margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
-            >
-              <XAxis type="number" domain={[0, 100]} stroke="#475569" tick={{ fontSize: 10, fill: "#64748b" }} />
-              <YAxis dataKey="name" type="category" stroke="#94a3b8" tick={{ fontSize: 11, fill: "#cbd5e1" }} />
-              <Tooltip
-                contentStyle={{ backgroundColor: "#0b0f19", borderColor: "#334155", borderRadius: "8px", fontSize: "12px" }}
-                formatter={(val: number) => [`${val}%`, "P(Phishing)"]}
+            <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: 8 }} barCategoryGap={10}>
+              <XAxis
+                type="number"
+                domain={[0, 100]}
+                tick={{ fontSize: 10, fill: "#52525b" }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v) => `${v}%`}
               />
-              <Bar dataKey="probability" radius={[0, 4, 4, 0]}>
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
+              <YAxis
+                type="category"
+                dataKey="name"
+                tick={{ fontSize: 11, fill: "#a1a1aa" }}
+                axisLine={false}
+                tickLine={false}
+                width={95}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: "#111113",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  color: "#e4e4e7",
+                }}
+                itemStyle={{ color: "#a1a1aa" }}
+                formatter={(v: number) => [`${v}%`, "P(phishing)"]}
+              />
+              <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={18}>
+                {chartData.map((_, i) => (
+                  <Cell key={i} fill={i === 0 ? "#52525b" : "#a1a1aa"} />
                 ))}
               </Bar>
             </BarChart>

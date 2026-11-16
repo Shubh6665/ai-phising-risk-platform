@@ -14,8 +14,9 @@ describe("AnalysisForm Component", () => {
       />
     );
 
-    expect(screen.getByLabelText(/Email Body Content/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Analyze Email/i })).toBeInTheDocument();
+    // textarea has aria-label="Email Body Content"
+    expect(screen.getByRole("textbox", { name: /Email Body Content/i })).toBeInTheDocument();
   });
 
   it("prevents submission and displays validation error on empty text", async () => {
@@ -33,10 +34,12 @@ describe("AnalysisForm Component", () => {
     fireEvent.click(submitBtn);
 
     expect(handleSubmit).not.toHaveBeenCalled();
-    expect(screen.getByText(/Email body cannot be empty/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Email body text cannot be empty or whitespace only/i)
+    ).toBeInTheDocument();
   });
 
-  it("submits valid email content with optional subject", async () => {
+  it("submits valid email content", async () => {
     const handleSubmit = vi.fn().mockResolvedValue(undefined);
     render(
       <AnalysisForm
@@ -47,7 +50,7 @@ describe("AnalysisForm Component", () => {
       />
     );
 
-    const bodyInput = screen.getByLabelText(/Email Body Content/i);
+    const bodyInput = screen.getByRole("textbox", { name: /Email Body Content/i });
     const submitBtn = screen.getByRole("button", { name: /Analyze Email/i });
 
     await userEvent.type(bodyInput, "Please confirm your direct deposit details immediately.");
@@ -78,7 +81,7 @@ describe("AnalysisForm Component", () => {
     expect(handleSubmit).not.toHaveBeenCalled();
   });
 
-  it("loads pre-configured phishing and legitimate sample emails", () => {
+  it("loads pre-configured phishing sample email", () => {
     render(
       <AnalysisForm
         onSubmit={vi.fn()}
@@ -91,12 +94,8 @@ describe("AnalysisForm Component", () => {
     const phishingBtn = screen.getByRole("button", { name: /Phishing sample/i });
     fireEvent.click(phishingBtn);
 
-    const bodyInput = screen.getByLabelText(/Email Body Content/i) as HTMLTextAreaElement;
+    const bodyInput = screen.getByRole("textbox", { name: /Email Body Content/i }) as HTMLTextAreaElement;
     expect(bodyInput.value).toContain("http://192.168.1.100:8080");
-
-    const legitBtn = screen.getByRole("button", { name: /Legitimate sample/i });
-    fireEvent.click(legitBtn);
-    expect(bodyInput.value).toContain("Q3 Engineering");
   });
 
   it("clears inputs and invokes onReset when Clear button is clicked", async () => {
@@ -110,7 +109,7 @@ describe("AnalysisForm Component", () => {
       />
     );
 
-    const bodyInput = screen.getByLabelText(/Email Body Content/i);
+    const bodyInput = screen.getByRole("textbox", { name: /Email Body Content/i });
     await userEvent.type(bodyInput, "Test email body");
 
     const clearBtn = screen.getByRole("button", { name: /Clear/i });

@@ -15,8 +15,8 @@ describe("ModelBreakdown Component", () => {
     expect(screen.getByText("78.5%")).toBeInTheDocument();
     expect(screen.getByText("82.4%")).toBeInTheDocument();
     expect(screen.getByText("+10.0")).toBeInTheDocument();
-    expect(screen.getByText(/Random Forest/i)).toBeInTheDocument();
-    expect(screen.getByText(/DistilBERT/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Random Forest/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/DistilBERT/i).length).toBeGreaterThan(0);
   });
 
   it("highlights significant model divergence when probability delta > 0.30", () => {

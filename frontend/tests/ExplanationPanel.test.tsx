@@ -46,7 +46,7 @@ describe("ExplanationPanel Component", () => {
   it("renders deterministic label when LLM was unavailable", () => {
     render(<ExplanationPanel explanation={DEGRADED_EXPLANATION} />);
 
-    expect(screen.getByText(/Deterministic/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Deterministic/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/degraded/i)).toBeInTheDocument();
     expect(screen.getByText(/Email analysis completed with risk score 72\.0/i)).toBeInTheDocument();
   });

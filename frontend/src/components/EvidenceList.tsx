@@ -45,7 +45,8 @@ export const EvidenceList: React.FC<EvidenceListProps> = ({ evidence, status }) 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="text-xs font-medium text-zinc-300 truncate">
-                      {item.heading || item.document_name}
+                      {item.document_title || item.document_name}
+                      {item.heading ? ` · ${item.heading}` : ""}
                     </span>
                     <span className="label shrink-0">
                       {(item.similarity * 100).toFixed(0)}% match

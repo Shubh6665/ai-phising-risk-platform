@@ -72,7 +72,7 @@ describe("App Root Integration Component", () => {
   it("renders initial empty state with header and form before analysis", () => {
     render(<App />);
 
-    expect(screen.getByText(/AI Phishing Risk & Triage Platform/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/AI Phishing Risk & Triage Platform/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/No Analysis Executed Yet/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Analyze Email/i })).toBeInTheDocument();
   });

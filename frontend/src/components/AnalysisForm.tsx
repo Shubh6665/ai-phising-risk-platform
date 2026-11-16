@@ -32,7 +32,7 @@ export const AnalysisForm: React.FC<AnalysisFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!text.trim()) {
-      setValidationError("Email body cannot be empty.");
+      setValidationError("Email body text cannot be empty or whitespace only.");
       return;
     }
     setValidationError(null);
@@ -103,12 +103,11 @@ export const AnalysisForm: React.FC<AnalysisFormProps> = ({
         </div>
 
         <div>
-          <label htmlFor="email-body-content" className="label block mb-1.5" aria-label="Email Body Content">
+          <label htmlFor="email-body-content" className="label block mb-1.5">
             Email Body Content
           </label>
           <textarea
             id="email-body-content"
-            aria-label="Email Body Content"
             value={text}
             onChange={(e) => {
               setText(e.target.value);
@@ -132,9 +131,9 @@ export const AnalysisForm: React.FC<AnalysisFormProps> = ({
         <div className="flex items-center gap-2 pt-1">
           <button
             type="submit"
-            disabled={isLoading || !text.trim()}
+            disabled={isLoading}
             className="btn-primary"
-            aria-label="Analyze Email"
+            aria-label={isLoading ? "Analyzing Signals" : "Analyze Email"}
           >
             {isLoading ? (
               <>

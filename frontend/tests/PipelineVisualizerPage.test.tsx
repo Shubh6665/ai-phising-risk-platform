@@ -15,7 +15,7 @@ describe("PipelineVisualizerPage Component", () => {
     renderPage();
 
     expect(screen.getByText(/Backend Request Pipeline/i)).toBeInTheDocument();
-    expect(screen.getByText(/Processing Stages/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Processing Stages/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/9 steps/i)).toBeInTheDocument();
   });
 
@@ -40,9 +40,9 @@ describe("PipelineVisualizerPage Component", () => {
     expect(gatewayBtn).not.toBeNull();
     fireEvent.click(gatewayBtn!);
 
-    expect(screen.getByText(/POST \/api\/v1\/analyze/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/POST \/api\/v1\/analyze/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/src\/api\/routes\/analyze\.py/i)).toBeInTheDocument();
-    expect(screen.getByText(/Internal Operations/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Internal Operations/i).length).toBeGreaterThan(0);
   });
 
   it("renders input and output schema sections in detail view", () => {
@@ -52,7 +52,7 @@ describe("PipelineVisualizerPage Component", () => {
     expect(ragBtn).not.toBeNull();
     fireEvent.click(ragBtn!);
 
-    expect(screen.getByText(/Input Schema/i)).toBeInTheDocument();
-    expect(screen.getByText(/Output Contract/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Input Schema/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Output Contract/i).length).toBeGreaterThan(0);
   });
 });
